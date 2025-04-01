@@ -1,5 +1,12 @@
-const getIdentification = (req,res) =>{
-    res.send('welcome page');
+const User = require('../services/identify');
+getIdentification = async (req,res) =>{
+    try{
+        const user =await User.create(req);
+        return res.json(user);
+    }
+    catch(err){
+        return res.status(err.status).send(err.message);
+    }
 }
 
 module.exports = { getIdentification };

@@ -10,11 +10,13 @@ var app = express();
 //We are using the cors and bodyParser libraries.
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json);
+app.use(express.json());
 //We are connecting to the mongodb database.
-mongoose.connect('mongodb://localhost:27017/identify', { useNewUrlParser: true });
+mongoose.connect('mongodb://127.0.0.1:27017/gardens');
 //we create a route for the identify endpoint.
 const identify = require('./routes/identify');
 //we use the identify route as /identify.
 app.use('/identify', identify);
-app.listen(8080);
+app.listen(12345 , () => {
+    console.log('Server is running on port 12345');
+});
