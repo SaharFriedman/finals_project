@@ -5,6 +5,9 @@ function Home() {
             <h2>
                 WelcomePage
             </h2>
+            <button className="sign-up-button" type="button" onClick={() => window.location.href = '/signup'}>
+                Join Us
+            </button>
         </div>
     )
 }

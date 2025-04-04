@@ -1,6 +1,7 @@
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from "./pages/Home"
+import SignUp from "./pages/SignUp"
 function App() {
   return (
     <div className="App">
@@ -8,6 +9,7 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
+          <Route path="/signup" element={<SignUp />} />
         </Routes>
       </Router>
     </div>
