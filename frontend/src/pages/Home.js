@@ -8,6 +8,9 @@ function Home() {
             <button className="sign-up-button" type="button" onClick={() => window.location.href = '/signup'}>
                 Join Us
             </button>
+            <button className="sign-in-button" type="button" onClick={() => window.location.href = '/signin'}>
+                sign in
+            </button>
         </div>
     )
 }

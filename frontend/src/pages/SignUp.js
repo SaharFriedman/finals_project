@@ -1,6 +1,7 @@
 import React from "react";
 import { useState } from "react";
 import axios from 'axios';
+
 function SignUp() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -10,7 +11,7 @@ function SignUp() {
         try {
             const response = await axios.post("http://localhost:12345/api/signup", formToJson);
             if (response.status === 200) {
-                alert("hazza");
+                alert("sign up successful");
             }
             else alert(response.status())
         } catch (err) {
@@ -22,6 +23,11 @@ function SignUp() {
             <h2>
                 sign up page
             </h2>
+            <div>
+                <button className="home-button" type="button" onClick={() => window.location.href = '/'} >
+                    GO HOME
+                    </button>
+            </div>
             <form onSubmit={handleSubmit} className="signup-form">
                 <input
                     type="text"
