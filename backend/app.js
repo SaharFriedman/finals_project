@@ -14,9 +14,9 @@ app.use(express.json());
 //We are connecting to the mongodb database.
 mongoose.connect('mongodb://127.0.0.1:27017/gardens');
 //we create a route for the identify endpoint.
-const identify = require('./routes/identify');
+const signup = require('./routes/signup');
 //we use the identify route as /identify.
-app.use('/identify', identify);
+app.use('/api/signup', signup);
 app.listen(12345 , () => {
     console.log('Server is running on port 12345');
 });

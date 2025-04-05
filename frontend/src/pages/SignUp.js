@@ -4,18 +4,17 @@ import axios from 'axios';
 function SignUp() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const formToJson = { username, password };
+        const formToJson = { name: username,password: password };
         try {
-            const response = await axios.post("http://localhost:12345/identify", formToJson);
+            const response = await axios.post("http://localhost:12345/api/signup", formToJson);
             if (response.status === 200) {
                 alert("hazza");
             }
+            else alert(response.status())
         } catch (err) {
-            console.error(err);
-            setError("failed to signup")
+            alert("failed to signup")
         }
     }
     return (
@@ -23,7 +22,7 @@ function SignUp() {
             <h2>
                 sign up page
             </h2>
-            <form on onSubmit={handleSubmit} className="signup-form">
+            <form onSubmit={handleSubmit} className="signup-form">
                 <input
                     type="text"
                     placeholder="username"
@@ -39,7 +38,6 @@ function SignUp() {
                     required >
                 </input>
                 <button type="submit">Sign Up</button>
-                {error && <p className="error-message">{error}</p>}
             </form>
         </div>
     )

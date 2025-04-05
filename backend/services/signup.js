@@ -5,6 +5,7 @@ const create = async (req) =>{
         return await user.save();
     }
     catch(err){
+        console.log(err);
         throw Object.assign(new Error('failed to save user'), { status: 400 });
     }
 }
