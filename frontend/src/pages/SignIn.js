@@ -13,7 +13,7 @@ function SignIn() {
             const answer = await axios.post("http://localhost:12345/api/token", formToJson);
             if (answer.status === 200) {
                 alert("log in successful");
-                navigate("/analyse");
+                navigate("/testing");
             }
         } catch (err) {
             alert("can't log in!")
