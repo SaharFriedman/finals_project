@@ -63,7 +63,7 @@ const P5Sketch = () => {
     {
       "plant_label": "Flower",
       "bounding_box": "0,0,1920,1042",
-      "water_liters_per_week": 4.5,}"`.trim();
+    "water_liters_per_week": 4.5,}"`.trim();
 
     const userMessage = 
      `${JSON.stringify(jsonInput, null, 2)}`.trim();
