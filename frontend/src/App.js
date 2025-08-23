@@ -5,6 +5,7 @@ import SignUp from "./pages/SignUp"
 import SignIn from "./pages/SignIn"
 import Test from "./pages/Test"
 import P5Sketch from './components/P5Sketch';
+import PictureDetect from './PictureDetect';
 function App() {
   return (
     <div className="App">
@@ -16,6 +17,7 @@ function App() {
           <Route path="/signin" element={<SignIn />} />
           <Route path="/analyse" element={<P5Sketch />} />
           <Route path="/testing" element={<Test />} />
+          <Route path = "/final" element={<PictureDetect />} />
         </Routes>
       </Router>
     </div>
