@@ -15,7 +15,7 @@ MODEL_PATH = "my_model.pt"
 model = YOLO(MODEL_PATH, task='detect')
 
 PLANT_CLASSES = {"Plant", "Flower"}
-CONTAINER_CLASSES = {"pot", "Raised_Bed", "Garden_Bed", "Grass"}
+CONTAINER_CLASSES = {"Pot", "Raised_Bed", "Garden_Bed", "Grass"}
 
 MIN_IOU = 0.05  # small threshold handles plant-inside-large-bed
 
@@ -40,7 +40,7 @@ def iou(a,b):
     return inter / (area_a + area_b - inter + 1e-9)
 
 def normalize_container(lbl):
-    return "ground" if lbl in ("garden-bed", "grass") else lbl  # pot/raised_bed/ground
+    return "ground" if lbl in ("Garden_Bed", "Grass") else lbl  # pot/raised_bed/ground
 
 @app.post("/predict")
 def predict():
@@ -62,10 +62,13 @@ def predict():
             continue
         rec = {"label": label, "confidence": float(conf), "coords": box}
         if label in PLANT_CLASSES:
+            print(label)
             plants.append(rec)
         elif label in CONTAINER_CLASSES:
             containers.append(rec)
-
+            print(label)
+        else:
+            print(label)
     out = []
     for p in plants:
         best, best_iou = None, 0.0

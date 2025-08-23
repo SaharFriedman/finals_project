@@ -10,7 +10,7 @@ export default function PictureDetect() {
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [detections, setDetections] = useState([]); // raw objects from backend
   const [rows, setRows] = useState([]);             // editable rows
-const CONTAINERS = ["unknown", "pot", "raised_bed", "ground"];
+const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
   
 
   function onFileChange(e) {
