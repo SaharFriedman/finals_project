@@ -15,7 +15,7 @@ MODEL_PATH = "my_model.pt"
 model = YOLO(MODEL_PATH, task='detect')
 
 PLANT_CLASSES = {"Plant", "Flower"}
-CONTAINER_CLASSES = {"pot", "raised_bed", "garden-bed", "grass"}
+CONTAINER_CLASSES = {"pot", "Raised_Bed", "Garden_Bed", "Grass"}
 
 MIN_IOU = 0.05  # small threshold handles plant-inside-large-bed
 
