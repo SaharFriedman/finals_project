@@ -16,9 +16,12 @@ mongoose.connect('mongodb://127.0.0.1:27017/gardens');
 //we create a route for the identify endpoint.
 const signup = require('./routes/signup');
 const token = require('./routes/token');
+const gardenRoutes = require('./routes/gardenRoutes');
 //we use the identify route as /identify.
 app.use('/api/signup', signup);
 app.use('/api/token', token);
+app.use('/api/gardenRoutes', gardenRoutes);
+
 app.listen(12345 , () => {
     console.log('Server is running on port 12345');
 });
