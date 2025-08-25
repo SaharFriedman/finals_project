@@ -10,8 +10,8 @@ export default function PictureDetect() {
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [detections, setDetections] = useState([]); // raw objects from backend
   const [rows, setRows] = useState([]);             // editable rows
-const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
-  
+  const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
+
 
   function onFileChange(e) {
     const f = e.target.files?.[0];
@@ -29,7 +29,9 @@ const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
     setDetections([]);
     setRows([]);
   }
-
+  function renumberRows() {
+    setRows(prev => prev.map((r, i) => ({ ...r, idx: i + 1 })));
+  }
   async function runDetect() {
     if (!file) return;
     const fd = new FormData();
@@ -44,14 +46,18 @@ const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
     const arr = Array.isArray(data.image) ? data.image : []; // adapt to your shape
     setDetections(arr);
     // seed rows from detections
-    setRows(arr.map(d => ({
-    label: d.label || "Plant",
-    confidence: d.confidence ?? null,
-    coords: d.coords,
-    image: d.image,
-    container: d.container ?? "unknown",   // from backend only
-    notes: ""
-    })));
+    setRows(
+      arr.map((d, i) => ({
+        idx: i + 1,
+        label: d.label || "Plant",
+        confidence: d.confidence ?? null,
+        coords: d.coords,
+        image: d.image,
+        container: d.container ?? "unknown",
+        notes: ""
+      }))
+    );
+
   }
 
   return (
@@ -64,11 +70,16 @@ const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
       </button>
 
       <div style={{ marginTop: 12 }}>
-        <DetectionOverlay src={imgURL} natural={natural} detections={detections} maxWidth={720} />
+        <DetectionOverlay
+          src={imgURL}
+          natural={natural}
+          detections={rows}     // <-- use rows, not raw detections, so we have idx
+          maxWidth={720}
+        />
       </div>
 
       {rows.length > 0 && (
-        <PlantTable rows={rows} setRows={setRows} containerOptions={CONTAINERS}/>
+        <PlantTable rows={rows} setRows={setRows} containerOptions={CONTAINERS} />
       )}
     </div>
   );

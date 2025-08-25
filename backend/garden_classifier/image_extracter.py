@@ -14,10 +14,12 @@ import weatherAPI as WAPI
 MODEL_PATH = "my_model.pt"
 model = YOLO(MODEL_PATH, task='detect')
 
-PLANT_CLASSES = {"Plant", "Flower"}
-CONTAINER_CLASSES = {"Pot", "Raised_Bed", "Garden_Bed", "Grass"}
+PLANT_CLASSES_N     = {"plant", "flower", "tree"}  # add "tree" if your model has it
+CONTAINER_CLASSES_N = {"pot", "raised_bed", "garden_bed", "grass"}
 
-MIN_IOU = 0.05  # small threshold handles plant-inside-large-bed
+PLANT_MIN_CONF = 0.70            # plants only
+MIN_IOU        = 0.05            # allow small overlaps for big beds
+PRED_CONF_KEEP_ALL = 0.001       # keep everything from model; we filter plants ourselves
 
 def encode_b64(img):
     ok, buf = cv2.imencode(".jpg", img)
@@ -35,12 +37,30 @@ def iou(a,b):
     iw, ih = max(0, ix2-ix1), max(0, iy2-iy1)
     inter = iw*ih
     if inter == 0: return 0.0
-    area_a = (ax2-ax1)*(ay2-ay1)
-    area_b = (bx2-bx1)*(by2-by1)
+    area_a = (ax2-ax1)*(ay2-ay1); area_b = (bx2-bx1)*(by2-by1)
     return inter / (area_a + area_b - inter + 1e-9)
 
-def normalize_container(lbl):
-    return "ground" if lbl in ("Garden_Bed", "Grass") else lbl  # pot/raised_bed/ground
+# ---- label helpers ----
+def norm_label(lbl: str) -> str:
+    """lowercase + unify separators + simple synonyms"""
+    s = (lbl or "").strip().lower().replace(" ", "_").replace("-", "_")
+    synonyms = {
+        "potted_plant": "plant",   # or "pot" if your model uses it for the container class
+        "plant_pot":    "pot",
+        "raised-bed":   "raised_bed",
+        "garden-bed":   "garden_bed",
+        "gardenbed":    "garden_bed",
+        "lawn":         "grass",
+    }
+    return synonyms.get(s, s)
+
+def canonical_container(lbl_n: str) -> str:
+    """emit the 4 UI values you want to use everywhere"""
+    if lbl_n in {"garden_bed", "grass"}:
+        return "ground"
+    if lbl_n in {"pot", "raised_bed"}:
+        return lbl_n
+    return "unknown"
 
 @app.post("/predict")
 def predict():
@@ -49,26 +69,34 @@ def predict():
     img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
     h, w = img.shape[:2]
 
-    res = model(img)[0]
+    # Keep everything from the model; we will filter plants only.
+    res = model.predict(img, conf=PRED_CONF_KEEP_ALL, verbose=False)[0]
     names = res.names
 
     plants, containers = [], []
     for xyxy, cls, conf in zip(res.boxes.xyxy.tolist(),
                                res.boxes.cls.tolist(),
                                res.boxes.conf.tolist()):
-        label = names[int(cls)]
+        label_raw = names[int(cls)]
+        label_n   = norm_label(label_raw)
         box = clamp(*xyxy, w, h)
-        if not box: 
+        if not box:
             continue
-        rec = {"label": label, "confidence": float(conf), "coords": box}
-        if label in PLANT_CLASSES:
-            print(label)
+
+        conf = float(conf)
+        rec  = {"label_raw": label_raw, "label_n": label_n, "confidence": conf, "coords": box}
+
+        if label_n in PLANT_CLASSES_N:
+            if conf < PLANT_MIN_CONF:    # plants threshold 0.70
+                continue
             plants.append(rec)
-        elif label in CONTAINER_CLASSES:
+
+        elif label_n in CONTAINER_CLASSES_N:
+            # no confidence filter for containers
             containers.append(rec)
-            print(label)
-        else:
-            print(label)
+
+        # else: ignore other classes
+
     out = []
     for p in plants:
         best, best_iou = None, 0.0
@@ -78,15 +106,15 @@ def predict():
                 best, best_iou = c, score
 
         if best and best_iou >= MIN_IOU:
-            container = normalize_container(best["label"])
-            container_score = best_iou  # or best["confidence"], your choice
+            container       = canonical_container(best["label_n"])  # pot / raised_bed / ground
+            container_score = best_iou
         else:
             container, container_score = "unknown", 0.0
 
         x1,y1,x2,y2 = p["coords"]
         crop = img[y1:y2, x1:x2]
         out.append({
-            "label": p["label"],
+            "label": p["label_raw"],            # keep original plant label for display
             "confidence": p["confidence"],
             "coords": p["coords"],
             "image": encode_b64(crop),
@@ -94,7 +122,6 @@ def predict():
             "container_score": container_score
         })
 
-    # No need to return raw container boxes anymore
     return jsonify({"image": out})
 
 @app.route("/weather", methods=["POST"])
@@ -107,6 +134,3 @@ def weather():
     return weatherJSON
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=2021, debug=False)
-
-#=============================================================================#
-# print(results[0].to_json())
