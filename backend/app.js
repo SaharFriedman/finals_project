@@ -20,8 +20,7 @@ const gardenRoutes = require('./routes/gardenRoutes');
 //we use the identify route as /identify.
 app.use('/api/signup', signup);
 app.use('/api/token', token);
-app.use('/api/gardenRoutes', gardenRoutes);
-
+app.use('/api', gardenRoutes);
 app.listen(12345 , () => {
     console.log('Server is running on port 12345');
 });

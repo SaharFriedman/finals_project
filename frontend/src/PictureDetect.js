@@ -35,7 +35,7 @@ export default function PictureDetect() {
   async function runDetect() {
     if (!file) return;
     const fd = new FormData();
-    fd.append("image", file); // <-- key must match Flask: request.files["image"]
+    fd.append("image", file);
 
     const res = await fetch(PREDICT_URL, { method: "POST", body: fd });
     if (!res.ok) {
@@ -43,9 +43,9 @@ export default function PictureDetect() {
       return;
     }
     const data = await res.json();
-    const arr = Array.isArray(data.image) ? data.image : []; // adapt to your shape
+    const arr = Array.isArray(data.image) ? data.image : [];
     setDetections(arr);
-    // seed rows from detections
+    
     setRows(
       arr.map((d, i) => ({
         idx: i + 1,
@@ -73,7 +73,7 @@ export default function PictureDetect() {
         <DetectionOverlay
           src={imgURL}
           natural={natural}
-          detections={rows}     // <-- use rows, not raw detections, so we have idx
+          detections={rows}     
           maxWidth={720}
         />
       </div>
