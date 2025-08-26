@@ -17,7 +17,7 @@ model = YOLO(MODEL_PATH, task='detect')
 PLANT_CLASSES_N     = {"plant", "flower", "tree"}  # add "tree" if your model has it
 CONTAINER_CLASSES_N = {"pot", "raised_bed", "garden_bed", "grass"}
 
-PLANT_MIN_CONF = 0.70            # plants only
+PLANT_MIN_CONF = 0.60           # plants only
 MIN_IOU        = 0.05            # allow small overlaps for big beds
 PRED_CONF_KEEP_ALL = 0.001       # keep everything from model; we filter plants ourselves
 
