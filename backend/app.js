@@ -21,6 +21,10 @@ const gardenRoutes = require('./routes/gardenRoutes');
 app.use('/api/signup', signup);
 app.use('/api/token', token);
 app.use('/api', gardenRoutes);
+const path = require("path");
+app.use("/static/photos",
+  express.static(path.join(process.cwd(), "uploads/photos"))
+);
 app.listen(12345 , () => {
     console.log('Server is running on port 12345');
 });

@@ -2,15 +2,52 @@ const mongoose = require("mongoose");
 const Photo = require("../models/photos");
 const Plant = require("../models/plant");
 
-const toOid = (v) => (v && mongoose.Types.ObjectId.isValid(v) ? new mongoose.Types.ObjectId(v) : null);
+const sizeOf = require("image-size");           // NEW
+const path = require("path");
+
+const toOid = (v) =>
+  (v && mongoose.Types.ObjectId.isValid(v) ? new mongoose.Types.ObjectId(v) : null);
 
 /**
  * POST /api/photos
- * Body: { area_id, file_name, width, height, taken_at }
- * -> { photo_id }
+ * Multipart (preferred):
+ *   form-data:
+ *     - photo: (file)
+ *     - area_id: <ObjectId string>
+ *     - taken_at?: ISO string
+ *
+ * Fallback (old JSON body still supported):
+ *   { area_id, file_name, width, height, taken_at }
+ *
+ * -> { photo_id, photo_url }
  */
 exports.createPhoto = async (req, res) => {
   try {
+    // If multipart was used, you'll have req.file
+    if (req.file) {
+      const { area_id, taken_at } = req.body;
+      const areaId = toOid(area_id);
+      if (!areaId) return res.status(400).json({ error: "area_id is invalid" });
+
+      // read size from the saved image
+      const absPath = req.file.path;
+      const { width, height } = sizeOf(absPath);
+
+      const photo = await Photo.create({
+        areaId,
+        fileName: req.file.filename,     // just the filename we saved
+        width,
+        height,
+        takenAt: taken_at ? new Date(taken_at) : new Date(),
+      });
+
+      return res.json({
+        photo_id: photo._id.toString(),
+        photo_url: `/static/photos/${photo.fileName}` // usable in <img src="">
+      });
+    }
+
+    // ---- fallback: keep your previous JSON contract working if no file uploaded ----
     const { area_id, file_name, width, height, taken_at } = req.body;
 
     const areaId = toOid(area_id);
@@ -19,30 +56,24 @@ exports.createPhoto = async (req, res) => {
       return res.status(400).json({ error: "file_name, width, height are required" });
     }
 
-    const takenAt = taken_at ? new Date(taken_at) : new Date();
-
     const photo = await Photo.create({
-      areaId, fileName: file_name, width, height, takenAt,
+      areaId,
+      fileName: file_name,
+      width,
+      height,
+      takenAt: taken_at ? new Date(taken_at) : new Date(),
     });
 
-    res.json({ photo_id: photo._id.toString() });
+    return res.json({
+      photo_id: photo._id.toString(),
+      photo_url: `/static/photos/${photo.fileName}` // if you later move file into photos dir
+    });
   } catch (err) {
     console.error("createPhoto error:", err);
     res.status(500).json({ error: "internal_error" });
   }
 };
 
-/**
- * POST /api/plants   (bulk upsert)
- * Body: [
- *   { area_id, photo_id, idx, label, container, coords_px:[x1,y1,x2,y2], confidence, notes? }
- * ]
- * -> [
- *   { photo_id, idx, plant_id }
- * ]
- *
- * Upserts by (photoId, idx) so saving the same picture again is idempotent.
- */
 exports.bulkUpsertPlants = async (req, res) => {
   try {
     const rows = Array.isArray(req.body) ? req.body : [];
