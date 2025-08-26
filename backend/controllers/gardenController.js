@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 const Photo = require("../models/photos");
 const Plant = require("../models/plant");
-
-const sizeOf = require("image-size");           // NEW
+const fs = require("fs");
+const { imageSize } = require("image-size");
 const path = require("path");
 
 const toOid = (v) =>
@@ -31,7 +31,8 @@ exports.createPhoto = async (req, res) => {
 
       // read size from the saved image
       const absPath = req.file.path;
-      const { width, height } = sizeOf(absPath);
+      const buffer = fs.readFileSync(absPath);
+      const { width, height } = imageSize(buffer);
 
       const photo = await Photo.create({
         areaId,
@@ -82,10 +83,10 @@ exports.bulkUpsertPlants = async (req, res) => {
     // Build bulk upserts
     const ops = [];
     for (const r of rows) {
-      const areaId  = toOid(r.area_id);
+      const areaId = toOid(r.area_id);
       const photoId = toOid(r.photo_id);
-      const idx     = Number.isInteger(r.idx) ? r.idx : null;
-      const coords  = r.coords_px;
+      const idx = Number.isInteger(r.idx) ? r.idx : null;
+      const coords = r.coords_px;
 
       if (!areaId || !photoId || !idx || !Array.isArray(coords) || coords.length !== 4) continue;
 

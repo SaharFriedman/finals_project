@@ -5,7 +5,7 @@ import PlantTable from "./components/PlantTable";
 import { savePhotoFile } from "./api/photos"; // uses multipart/form-data to upload the photo
 
 const PREDICT_URL = "http://127.0.0.1:2021/predict"; // Flask YOLO
-const API_BASE = "http://localhost:12345/api/gardenRoutes"; // Node MVC
+const API_BASE = "http://localhost:12345/api"; // Node MVC
 
 export default function PictureDetect() {
   const [file, setFile] = useState(null);
