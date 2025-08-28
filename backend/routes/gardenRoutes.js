@@ -24,10 +24,19 @@ const upload = multer({
   limits: { fileSize: 15 * 1024 * 1024 }, // 15MB max, adjust if needed
 });
 
-// ⬇️ This route now accepts multipart/form-data with a file field named "photo"
 router.post("/photos", upload.single("photo"), ctrl.createPhoto);
 
-// unchanged
 router.post("/plants", ctrl.bulkUpsertPlants);
+
+// ---- Areas ----
+router.get("/areas", ctrl.listAreas);            // ?user_id=<oid>
+router.post("/areas", ctrl.createArea);          // { user_id, name? } -> auto "Area N" if no name
+router.patch("/areas/:id", ctrl.renameArea);     // { user_id, name }
+
+// ---- Photos ----
+router.post("/photos", upload.single("photo"), ctrl.createPhoto); // multipart: photo + user_id + area_id + taken_at?
+
+// ---- Plants ----
+router.post("/plants", ctrl.bulkUpsertPlants);   // body: rows[], ?user_id= in query or body.user_id
 
 module.exports = router;
