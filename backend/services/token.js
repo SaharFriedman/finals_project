@@ -5,7 +5,7 @@ const createToken = async (req) =>{
     try{
         const {name,password} = req.body;
         const user = await User.findOne({name,password});
-        return jwt.sign(user._id.toString(),secretkey);
+        return jwt.sign(user.id.toString(),secretkey);
     }
     catch(err){
         console.log(err);
@@ -17,7 +17,7 @@ const verifyToken = (token) => {
          const decode = jwt.verify(token, secretkey);
         return decode;
     }catch(error){
-        throw Object.assign(new Error(error.massage || 'Bad Request'), {status:error.status || 400});
+        throw Object.assign(new Error(error.message || 'Bad Request'), {status:error.status || 400});
     }
 };
 module.exports = { createToken, verifyToken};

@@ -16,7 +16,7 @@ const toOid = (v) =>
  */
 exports.listAreas = async (req, res) => {
   try {
-    const userId = toOid(req.query.user_id);
+    const userId = toOid(req.userId);
     if (!userId) return res.status(400).json({ error: "user_id is invalid" });
 
     const areas = await Area.find({ userId }).sort({ orderIndex: 1 }).lean();
@@ -38,8 +38,8 @@ exports.listAreas = async (req, res) => {
  */
 exports.createArea = async (req, res) => {
   try {
-    const { user_id, name } = req.body;
-    const userId = toOid(user_id);
+    const { name } = req.body;
+    const userId = toOid(req.userId);
     if (!userId) return res.status(400).json({ error: "user_id is invalid" });
 
     // find next orderIndex for that user
@@ -74,8 +74,8 @@ exports.createArea = async (req, res) => {
 exports.renameArea = async (req, res) => {
   try {
     const id = toOid(req.params.id);
-    const { user_id, name } = req.body;
-    const userId = toOid(user_id);
+    const { name } = req.body;
+    const userId = toOid(req.userId);
     if (!id) return res.status(400).json({ error: "area_id is invalid" });
     if (!userId) return res.status(400).json({ error: "user_id is invalid" });
     if (!name || !name.trim()) return res.status(400).json({ error: "name is required" });
@@ -106,8 +106,8 @@ exports.createPhoto = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "photo file is required" });
 
-    const { user_id, area_id, taken_at } = req.body;
-    const userId = toOid(user_id);
+    const { area_id, taken_at } = req.body;
+    const userId = toOid(req.userId);
     const areaId = toOid(area_id);
     if (!userId) return res.status(400).json({ error: "user_id is invalid" });
     if (!areaId) return res.status(400).json({ error: "area_id is invalid" });
@@ -170,7 +170,7 @@ exports.createPhoto = async (req, res) => {
 
 exports.bulkUpsertPlants = async (req, res) => {
   try {
-    const userId = toOid(req.query.user_id || (req.body && req.body.user_id));
+   const userId = toOid(req.userId);
     if (!userId) return res.status(400).json({ error: "user_id is invalid" });
 
     const rows = Array.isArray(req.body) ? req.body : [];
@@ -214,7 +214,7 @@ exports.bulkUpsertPlants = async (req, res) => {
             createdAt: new Date(),
           },
           $set: {
-            userId,            
+            userId,            // <-- MOVE HERE (and remove from $setOnInsert)
             label: r.label || "Plant",
             container: r.container || "unknown",
             coordsPx: coords.map(Number),

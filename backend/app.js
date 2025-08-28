@@ -16,11 +16,18 @@ mongoose.connect('mongodb://127.0.0.1:27017/gardens');
 //we create a route for the identify endpoint.
 const signup = require('./routes/signup');
 const token = require('./routes/token');
+const {isLoggedIn}  = require('./controllers/token');
 const gardenRoutes = require('./routes/gardenRoutes');
 //we use the identify route as /identify.
 app.use('/api/signup', signup);
 app.use('/api/token', token);
-app.use('/api', gardenRoutes);
+app.use('/api',isLoggedIn ,gardenRoutes);
+
+//for the frontend validation
+app.get('/api/session', isLoggedIn, (req, res) => {
+  res.json({ ok: true, user_id: req.userId });
+});
+
 const path = require("path");
 app.use("/static/photos",
   express.static(path.join(process.cwd(), "uploads/photos"))

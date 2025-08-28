@@ -4,6 +4,7 @@ import PlantTable from "./components/PlantTable";
 import { savePhotoFile } from "./api/photos";
 import { listAreas, createArea, renameArea } from "./api/areas";
 import { bulkUpsertPlants } from "./api/plants";
+import SignOutButton from "./components/SignOutButton";
 
 const PREDICT_URL = "http://127.0.0.1:2021/predict";            // Flask YOLO
 const API_BASE   = "http://localhost:12345/api";   // Node MVC
@@ -139,6 +140,7 @@ export default function PictureDetect() {
   return (
     <div style={{ padding: 16 }}>
       <h2>YOLO Detection (React + SVG)</h2>
+      <SignOutButton />
 
       {/* Area controls */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
