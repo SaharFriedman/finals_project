@@ -16,17 +16,14 @@ function SignIn() {
         { name: username, password }
       );
       if (status === 200) {
-        // Your backend returns a raw string token.
         const token = typeof data === "string" ? data : data.token;
         if (!token) throw new Error("No token returned");
 
         localStorage.setItem("token", token);
 
-        // Optional: make axios send the token automatically from now on
         axios.defaults.headers.common.Authorization = `Bearer ${token}`;
 
-        // Go back to the protected page user originally wanted, or /final
-        const from = location.state?.from?.pathname || "/final";
+        const from = location.state?.from?.pathname || "/welcome";
         navigate(from, { replace: true });
       }
     } catch (err) {

@@ -8,6 +8,7 @@ import SignIn from "./pages/SignIn";
 
 import MyGarden from './pages/MyGarden';
 
+import WelcomePage from './pages/Welcome';
 
 export async function isAuthenticated() {
   const t = localStorage.getItem('token');
@@ -60,6 +61,7 @@ function App() {
           <Route path="/signin" element={<SignIn setToken={setToken} />} />
           {/* Private */}
           <Route path="/MyGarden" element={<RequireAuth><MyGarden /></RequireAuth>} />
+          <Route path="/welcome" element={<RequireAuth><WelcomePage /></RequireAuth>} />
           {/* fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
