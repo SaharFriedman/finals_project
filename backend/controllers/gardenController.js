@@ -31,7 +31,7 @@ exports.listAreas = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 };
-function escapeRegExp(s='') { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function escapeRegExp(s = '') { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 /**
  * POST /api/gardenRoutes/areas
@@ -39,10 +39,10 @@ function escapeRegExp(s='') { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
  */
 exports.createArea = async (req, res) => {
   try {
-    const userId = req.userId; 
+    const userId = req.userId;
     if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
-    const base = (req.body?.name || 'Area').trim(); 
+    const base = (req.body?.name || 'Area').trim();
 
     const rx = new RegExp(`^${escapeRegExp(base)}(?: (\\d+))?$`, 'i');
     const existing = await Area.find({ userId, name: rx }).select('name').lean();
@@ -176,7 +176,7 @@ exports.createPhoto = async (req, res) => {
 
 exports.bulkUpsertPlants = async (req, res) => {
   try {
-   const userId = toOid(req.userId);
+    const userId = toOid(req.userId);
     if (!userId) return res.status(400).json({ error: "user_id is invalid" });
 
     const rows = Array.isArray(req.body) ? req.body : [];
@@ -203,7 +203,7 @@ exports.bulkUpsertPlants = async (req, res) => {
       const areaId = toOid(r.area_id);
       const photoId = toOid(r.photo_id);
       const idx = Number.isInteger(r.idx) ? r.idx : null;
-      const coords = r.coords_px;
+      const coords = r.coordsPx;
 
       if (!areaId || !photoId || !idx || !Array.isArray(coords) || coords.length !== 4) continue;
       if (!areaSet.has(areaId.toString())) continue;
@@ -212,22 +212,26 @@ exports.bulkUpsertPlants = async (req, res) => {
       if (!expectedAreaStr || expectedAreaStr !== areaId.toString()) continue;
 
       ops.push({
-        update: {
-          $setOnInsert: {
-            areaId,            
-            photoId,           
-            idx,               
-            createdAt: new Date(),
+        updateOne: {
+          filter: { photoId, idx },
+          update: {
+            $setOnInsert: {
+              areaId,
+              photoId,
+              idx,
+              createdAt: new Date(),
+            },
+            $set: {
+              userId, // keep in $set so later edits update cleanly
+              label: r.label || "Plant",
+              container: r.container || "unknown",
+              coordsPx: coords.map(Number), // matches model field name
+              confidence: typeof r.confidence === "number" ? r.confidence : 0,
+              notes: r.notes || "",
+              updatedAt: new Date(),
+            },
           },
-          $set: {
-            userId,            // <-- MOVE HERE (and remove from $setOnInsert)
-            label: r.label || "Plant",
-            container: r.container || "unknown",
-            coordsPx: coords.map(Number),
-            confidence: typeof r.confidence === "number" ? r.confidence : 0,
-            notes: r.notes || "",
-            updatedAt: new Date(),
-          },
+          upsert: true,
         },
       });
     }
