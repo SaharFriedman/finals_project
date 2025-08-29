@@ -6,11 +6,9 @@ import { listAreas, createArea, renameArea } from "./api/areas";
 import { bulkUpsertPlants, listAreaPlants } from "./api/plants";
 import SignOutButton from "./components/SignOutButton";
 import axios from "axios";
-const PREDICT_URL = "http://127.0.0.1:2021/predict";            // Flask YOLO
-const API_BASE = "http://localhost:12345/api";   // Node MVC
+const PREDICT_URL = "http://127.0.0.1:2021/predict";            
 
 export default function PictureDetect() {
-  const [userId] = useState("");
   const [savedPhotos, setSavedPhotos] = useState([]);
   const [savedPlants, setSavedPlants] = useState([]);
   // Areas
@@ -25,23 +23,19 @@ export default function PictureDetect() {
       }))
       .filter(x => !!x.area_id);
   }
-  // Image/detection
   const [file, setFile] = useState(null);
   const [imgURL, setImgURL] = useState("");
   const [natural, setNatural] = useState({ width: 0, height: 0 });
-  const [rows, setRows] = useState([]); // table rows (what you draw and save)
+  const [rows, setRows] = useState([]); 
 
-  // Saved photo info (after upload)
-  const [photoMeta, setPhotoMeta] = useState(null); // { photo_id, photo_url, slot }
+  const [photoMeta, setPhotoMeta] = useState(null);
 
-  // Container options for table dropdown
   const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
 
-  // Load user's areas on mount
   useEffect(() => {
     (async () => {
       try {
-        const a = await listAreas(); // uses token - do not pass userId here
+        const a = await listAreas(); 
         const norm = normalizeAreas(a);
         setAreas(norm);
         if (norm.length) setSelectedAreaId(norm[0].area_id);
@@ -72,13 +66,13 @@ export default function PictureDetect() {
 
   async function onAddArea() {
     try {
-      const raw = await createArea();              // backend returns { _id, name }
-      const a = normalizeAreas([raw])[0];          // make sure it has area_id
+      const raw = await createArea();              
+      const a = normalizeAreas([raw])[0];          
 
       setAreas(prev => [...prev, a].sort((x, y) =>
         (x.orderIndex - y.orderIndex) || String(x.name).localeCompare(String(y.name))
       ));
-      setSelectedAreaId(a.area_id);                // use normalized id only
+      setSelectedAreaId(a.area_id);                
     } catch (e) {
       console.error(e);
       alert("Failed to create area");
@@ -129,7 +123,7 @@ export default function PictureDetect() {
       idx: i + 1,
       label: d.label || "Plant",
       confidence: typeof d.confidence === "number" ? d.confidence : null,
-      coords: d.coords,                        // [x1,y1,x2,y2] pixels
+      coords: d.coords,                        
       container: d.container ?? "unknown",
       notes: "",
     })));
@@ -161,7 +155,7 @@ export default function PictureDetect() {
       }));
       await bulkUpsertPlants(payload);
       const token = localStorage.getItem("token");
-      const res = await axios.post("http://localhost:12345/api/plants", payload, {
+      await axios.post("http://localhost:12345/api/plants", payload, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
@@ -188,7 +182,7 @@ export default function PictureDetect() {
     for (const p of savedPlants) {
       const arr = m.get(p.photo_id) || [];
       arr.push({
-        coords: p.coords,          // [x1,y1,x2,y2] in px
+        coords: p.coords,         
         label: p.label,
         confidence: p.confidence,
         notes: p.notes || "",
@@ -212,7 +206,7 @@ export default function PictureDetect() {
         >
           <option key="__placeholder__" value="" disabled>Select area…</option>
           {areas.map(a => {
-            const id = a.area_id || a._id || a.id || a.areaId; // belt-and-suspenders
+            const id = a.area_id || a._id || a.id || a.areaId; 
             return (
               <option key={String(id)} value={String(id)}>
                 {a.name}
@@ -287,7 +281,7 @@ export default function PictureDetect() {
         <DetectionOverlay
           src={imgURL}
           natural={natural}
-          detections={rows}    // draw what the table has (keeps edits in sync)
+          detections={rows}    
           maxWidth={720}
         />
       </div>
