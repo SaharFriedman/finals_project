@@ -59,7 +59,6 @@ function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/signin" element={<SignIn setToken={setToken} />} />
           {/* Private */}
-          
           <Route path="/MyGarden" element={<RequireAuth><MyGarden /></RequireAuth>} />
           {/* fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
