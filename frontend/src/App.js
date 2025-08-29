@@ -7,7 +7,7 @@ import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
 import Test from "./pages/Test";
 import P5Sketch from './components/P5Sketch';
-import PictureDetect from './PictureDetect';
+import PictureDetect from './pages/PictureDetect';
 
 
 export async function isAuthenticated() {
