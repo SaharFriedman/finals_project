@@ -5,9 +5,8 @@ import axios from 'axios';
 import Home from "./pages/Home";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
-import Test from "./pages/Test";
-import P5Sketch from './components/P5Sketch';
-import PictureDetect from './pages/MyGarden';
+
+import MyGarden from './pages/MyGarden';
 
 
 export async function isAuthenticated() {
@@ -60,9 +59,8 @@ function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/signin" element={<SignIn setToken={setToken} />} />
           {/* Private */}
-          <Route path="/analyse" element={<RequireAuth><P5Sketch /></RequireAuth>} />
-          <Route path="/testing" element={<RequireAuth><Test /></RequireAuth>} />
-          <Route path="/final" element={<RequireAuth><PictureDetect /></RequireAuth>} />
+          
+          <Route path="/MyGarden" element={<RequireAuth><MyGarden /></RequireAuth>} />
           {/* fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
