@@ -5,9 +5,9 @@ import { savePhotoFile } from "./api/photos";
 import { listAreas, createArea, renameArea } from "./api/areas";
 import { bulkUpsertPlants } from "./api/plants";
 import SignOutButton from "./components/SignOutButton";
-
+import axios from "axios";
 const PREDICT_URL = "http://127.0.0.1:2021/predict";            // Flask YOLO
-const API_BASE   = "http://localhost:12345/api";   // Node MVC
+const API_BASE = "http://localhost:12345/api";   // Node MVC
 
 export default function PictureDetect() {
   // Auth/user — replace with your real user id once auth is wired
@@ -42,24 +42,29 @@ export default function PictureDetect() {
     })();
   }, [userId]);
 
-  // UI handlers
   async function onAddArea() {
-    try {
-      const a = await createArea(userId); // no name => auto "Area N"
-      setAreas(prev => [...prev, a].sort((x,y) => x.orderIndex - y.orderIndex));
-      setSelectedAreaId(a.area_id);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to create area");
-    }
+  try {
+    const a = await createArea();
+
+    setAreas(prev => [...prev, a].sort((x, y) => {
+      const ox = x.orderIndex ?? Number.MAX_SAFE_INTEGER;
+      const oy = y.orderIndex ?? Number.MAX_SAFE_INTEGER;
+      return ox - oy || String(x.name).localeCompare(String(y.name));
+    }));
+
+    setSelectedAreaId(a.area_id); 
+  } catch (e) {
+    console.error(e);
+    alert("Failed to create area");
   }
+}
 
   async function onRenameArea() {
     if (!selectedAreaId) return;
     const name = prompt("New area name (e.g., Front yard):");
     if (!name) return;
     try {
-      const updated = await renameArea(selectedAreaId, userId, name);
+      const updated = await renameArea(selectedAreaId, name);
       setAreas(prev => prev.map(x => x.area_id === updated.area_id ? updated : x));
     } catch (e) {
       console.error(e);
@@ -67,7 +72,7 @@ export default function PictureDetect() {
     }
   }
 
-  function onFileChange(e) {
+  const handleFileChange = (e) => {
     const f = e.target.files?.[0] || null;
     if (!f) return;
     setFile(f);
@@ -110,14 +115,12 @@ export default function PictureDetect() {
       if (!file) return alert("Choose a photo first.");
       if (!rows.length) return alert("No plants to save.");
 
-      // 1) Upload the garden photo (server assigns slot 1..3)
       const takenAt = new Date().toISOString();
       const { photo_id, photo_url, slot } = await savePhotoFile({
         file, userId, areaId: selectedAreaId, takenAt, apiBase: API_BASE
       });
       setPhotoMeta({ photo_id, photo_url, slot });
 
-      // 2) Bulk upsert plants (linked to photo + area + user)
       const payload = rows.map(r => ({
         area_id: selectedAreaId,
         photo_id,
@@ -129,7 +132,13 @@ export default function PictureDetect() {
         notes: r.notes || "",
       }));
 
-      await bulkUpsertPlants(userId, payload, API_BASE);
+      const token = localStorage.getItem("token");
+      const res = await axios.post("http://localhost:12345/api/plants", payload, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
       alert(`Saved! (Photo slot ${slot})`);
     } catch (e) {
       console.error(e);
@@ -158,7 +167,7 @@ export default function PictureDetect() {
       </div>
 
       {/* File + detect */}
-      <input type="file" accept="image/*" onChange={onFileChange} />
+      <input type="file" accept="image/*" onChange={handleFileChange} />
       <button onClick={runDetect} disabled={!file} style={{ marginLeft: 8 }}>
         Detect
       </button>

@@ -15,3 +15,12 @@ export async function savePhotoFile({ file, areaId, takenAt }) {
   if (!resp.ok) throw new Error(`savePhotoFile failed: ${resp.status}`);
   return resp.json();
 }
+
+
+export async function listAreaPhotos(areaId) {
+  const resp = await fetch(`${API_BASE}/areas/${areaId}/photos`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`listAreaPhotos failed: ${resp.status}`);
+  return resp.json();
+}

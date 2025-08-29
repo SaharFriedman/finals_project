@@ -34,6 +34,8 @@ router.post("/areas", ctrl.createArea);          // { user_id, name? } -> auto "
 router.patch("/areas/:id", ctrl.renameArea);     // { user_id, name }
 
 // ---- Photos ----
+router.get("/areas/:id/photos", ctrl.listAreaPhotos);
+router.get("/areas/:id/plants", ctrl.listAreaPlants);
 router.post("/photos", upload.single("photo"), ctrl.createPhoto); // multipart: photo + user_id + area_id + taken_at?
 
 // ---- Plants ----

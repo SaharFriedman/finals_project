@@ -10,3 +10,12 @@ export async function bulkUpsertPlants(rows) {
   if (!resp.ok) throw new Error(`bulkUpsertPlants failed: ${resp.status}`);
   return resp.json();
 }
+
+
+export async function listAreaPlants(areaId) {
+  const resp = await fetch(`${API_BASE}/areas/${areaId}/plants`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`listAreaPlants failed: ${resp.status}`);
+  return resp.json();
+}
