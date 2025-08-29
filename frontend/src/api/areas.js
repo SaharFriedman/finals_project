@@ -6,15 +6,17 @@ export async function listAreas() {
   if (!res.ok) throw new Error('listAreas failed');
   return res.json();
 }
+
 export async function createArea(name) {
   const res = await fetch(`${API_BASE}/areas`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name }),  // can be undefined
   });
   if (!res.ok) throw new Error('createArea failed');
   return res.json();
 }
+
 export async function renameArea(areaId, name) {
   const res = await fetch(`${API_BASE}/areas/${areaId}`, {
     method: 'PATCH',

@@ -31,6 +31,7 @@ exports.listAreas = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 };
+function escapeRegExp(s = '') { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 /**
  * POST /api/gardenRoutes/areas
@@ -38,32 +39,37 @@ exports.listAreas = async (req, res) => {
  */
 exports.createArea = async (req, res) => {
   try {
-    const { name } = req.body;
-    const userId = toOid(req.userId);
-    if (!userId) return res.status(400).json({ error: "user_id is invalid" });
+    const userId = req.userId;
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
-    // find next orderIndex for that user
-    const last = await Area.findOne({ userId }).sort({ orderIndex: -1 }).lean();
-    const nextIndex = (last?.orderIndex || 0) + 1;
-    const finalName = (name && name.trim()) || `Area ${nextIndex}`;
+    const base = (req.body?.name || 'Area').trim();
 
-    const area = await Area.create({
-      userId,
-      name: finalName,
-      orderIndex: nextIndex,
-    });
+    const rx = new RegExp(`^${escapeRegExp(base)}(?: (\\d+))?$`, 'i');
+    const existing = await Area.find({ userId, name: rx }).select('name').lean();
 
-    res.json({
-      area_id: area._id.toString(),
-      name: area.name,
-      orderIndex: area.orderIndex,
-    });
-  } catch (e) {
-    if (e && e.code === 11000) {
-      return res.status(409).json({ error: "duplicate_area_name" });
+    const taken = new Set();
+    let hasBare = false;
+    for (const e of existing) {
+      const m = e.name.match(rx);
+      if (!m || m[1] == null) hasBare = true; else taken.add(Number(m[1]));
     }
-    console.error("createArea error:", e);
-    res.status(500).json({ error: "internal_error" });
+
+    let candidate = hasBare ? null : base;
+    if (!candidate) {
+      let n = 1;
+      while (taken.has(n)) n++;
+      candidate = `${base} ${n}`;
+    }
+
+    const doc = await Area.create({ userId, name: candidate });
+    return res.json({ _id: doc._id.toString(), name: doc.name });
+  } catch (err) {
+
+    if (err?.code === 11000) {
+      return res.status(409).json({ error: 'duplicate', message: 'Area name exists. Try again.' });
+    }
+    console.error('createArea error:', err);
+    return res.status(500).json({ error: 'internal_error' });
   }
 };
 
@@ -170,7 +176,7 @@ exports.createPhoto = async (req, res) => {
 
 exports.bulkUpsertPlants = async (req, res) => {
   try {
-   const userId = toOid(req.userId);
+    const userId = toOid(req.userId);
     if (!userId) return res.status(400).json({ error: "user_id is invalid" });
 
     const rows = Array.isArray(req.body) ? req.body : [];
@@ -197,7 +203,7 @@ exports.bulkUpsertPlants = async (req, res) => {
       const areaId = toOid(r.area_id);
       const photoId = toOid(r.photo_id);
       const idx = Number.isInteger(r.idx) ? r.idx : null;
-      const coords = r.coords_px;
+      const coords = r.coordsPx;
 
       if (!areaId || !photoId || !idx || !Array.isArray(coords) || coords.length !== 4) continue;
       if (!areaSet.has(areaId.toString())) continue;
@@ -206,22 +212,26 @@ exports.bulkUpsertPlants = async (req, res) => {
       if (!expectedAreaStr || expectedAreaStr !== areaId.toString()) continue;
 
       ops.push({
-        update: {
-          $setOnInsert: {
-            areaId,            
-            photoId,           
-            idx,               
-            createdAt: new Date(),
+        updateOne: {
+          filter: { photoId, idx },
+          update: {
+            $setOnInsert: {
+              areaId,
+              photoId,
+              idx,
+              createdAt: new Date(),
+            },
+            $set: {
+              userId, // keep in $set so later edits update cleanly
+              label: r.label || "Plant",
+              container: r.container || "unknown",
+              coordsPx: coords.map(Number), // matches model field name
+              confidence: typeof r.confidence === "number" ? r.confidence : 0,
+              notes: r.notes || "",
+              updatedAt: new Date(),
+            },
           },
-          $set: {
-            userId,            // <-- MOVE HERE (and remove from $setOnInsert)
-            label: r.label || "Plant",
-            container: r.container || "unknown",
-            coordsPx: coords.map(Number),
-            confidence: typeof r.confidence === "number" ? r.confidence : 0,
-            notes: r.notes || "",
-            updatedAt: new Date(),
-          },
+          upsert: true,
         },
       });
     }
@@ -243,5 +253,60 @@ exports.bulkUpsertPlants = async (req, res) => {
   } catch (err) {
     console.error("bulkUpsertPlants error:", err);
     res.status(500).json({ error: "internal_error" });
+  }
+};
+
+// ---------- NEW: list photos for an area (up to 3) ----------
+exports.listAreaPhotos = async (req, res) => {
+  try {
+    const userId = toOid(req.userId);
+    const areaId = toOid(req.params.id);
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    if (!areaId) return res.status(400).json({ error: 'area_id invalid' });
+
+    const photos = await Photo.find({ userId, areaId })
+      .sort({ slot: 1 })
+      .lean();
+
+    return res.json(photos.map(p => ({
+      photo_id: p._id.toString(),
+      slot: p.slot,
+      width: p.width,
+      height: p.height,
+      takenAt: p.takenAt,
+      photo_url: `/static/photos/${p.fileName}`,
+    })));
+  } catch (err) {
+    console.error('listAreaPhotos error:', err);
+    res.status(500).json({ error: 'internal_error' });
+  }
+};
+
+// ---------- NEW: list all plants saved for an area (across its photos) ----------
+exports.listAreaPlants = async (req, res) => {
+  try {
+    const userId = toOid(req.userId);
+    const areaId = toOid(req.params.id);
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    if (!areaId) return res.status(400).json({ error: 'area_id invalid' });
+
+    const plants = await Plant.find({ userId, areaId })
+      .sort({ photoId: 1, idx: 1 })
+      .lean();
+
+    return res.json(plants.map(p => ({
+      plant_id: p._id.toString(),
+      photo_id: p.photoId.toString(),
+      idx: p.idx,
+      label: p.label,
+      container: p.container,
+      coords: p.coordsPx,
+      confidence: p.confidence,
+      notes: p.notes || '',
+      createdAt: p.createdAt,
+    })));
+  } catch (err) {
+    console.error('listAreaPlants error:', err);
+    res.status(500).json({ error: 'internal_error' });
   }
 };
