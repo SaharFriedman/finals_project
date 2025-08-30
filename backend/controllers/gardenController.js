@@ -256,7 +256,7 @@ exports.bulkUpsertPlants = async (req, res) => {
   }
 };
 
-// ---------- NEW: list photos for an area (up to 3) ----------
+
 exports.listAreaPhotos = async (req, res) => {
   try {
     const userId = toOid(req.userId);
@@ -282,7 +282,6 @@ exports.listAreaPhotos = async (req, res) => {
   }
 };
 
-// ---------- NEW: list all plants saved for an area (across its photos) ----------
 exports.listAreaPlants = async (req, res) => {
   try {
     const userId = toOid(req.userId);
