@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import DetectionOverlay from "./components/DetectionOverlay";
-import PlantTable from "./components/PlantTable";
-import { savePhotoFile, listAreaPhotos } from "./api/photos";
-import { listAreas, createArea, renameArea } from "./api/areas";
-import { bulkUpsertPlants, listAreaPlants } from "./api/plants";
-import SignOutButton from "./components/SignOutButton";
+import DetectionOverlay from "../components/DetectionOverlay";
+import PlantTable from "../components/PlantTable";
+import { savePhotoFile, listAreaPhotos } from "../api/photos";
+import { listAreas, createArea, renameArea } from "../api/areas";
+import { bulkUpsertPlants, listAreaPlants } from "../api/plants";
+import SignOutButton from "../components/SignOutButton";
 import axios from "axios";
 const PREDICT_URL = "http://127.0.0.1:2021/predict";            
 
