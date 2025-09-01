@@ -1,4 +1,5 @@
 import './App.css';
+import MyHelper from './pages/MyHelper';
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -64,7 +65,8 @@ function App() {
           <Route path="/welcome" element={<RequireAuth><WelcomePage /></RequireAuth>} />
           {/* fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+          <Route path="/my-helper" element={<MyHelper/>} />
+      </Routes>
       </Router>
     </div>
   );

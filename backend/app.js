@@ -18,11 +18,13 @@ const signup = require('./routes/signup');
 const token = require('./routes/token');
 const {isLoggedIn}  = require('./controllers/token');
 const gardenRoutes = require('./routes/gardenRoutes');
+const helperRoutes = require("./routes/helper");
 //we use the identify route as /identify.
 app.use('/api/signup', signup);
 app.use('/api/token', token);
 app.use('/api',isLoggedIn ,gardenRoutes);
-
+//add iSLoggedIn method here when done
+app.use("/api/helper", helperRoutes);
 //for the frontend validation
 app.get('/api/session', isLoggedIn, (req, res) => {
   res.json({ ok: true, user_id: req.userId });
@@ -35,3 +37,4 @@ app.use("/static/photos",
 app.listen(12345 , () => {
     console.log('Server is running on port 12345');
 });
+

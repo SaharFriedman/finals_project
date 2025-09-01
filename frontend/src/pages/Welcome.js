@@ -296,6 +296,7 @@ const Welcome = () => {
         setError("The AI response was not valid JSON. Check console for details.");
         return;
       }
+
       const recs = Array.isArray(parsed.recommendations)
         ? parsed.recommendations
         : parsed.recommendations
