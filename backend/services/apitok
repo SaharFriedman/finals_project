@@ -1,2 +1,2 @@
-const OPENAI_KEY = "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";
+const OPENAI_KEY = "";
 module.exports = { OPENAI_KEY };
