@@ -1,7 +1,6 @@
 
-import React, { useEffect, useState, useRef } from "react";
-import { getHelperContext, postChat, logEvent } from "../api/helper";
-import { listAreaPlants } from "../api/plants";
+import { useEffect, useState } from "react";
+import { getHelperContext, postChat } from "../api/helper";
 
 export default function MyHelper() {
   const [plants, setPlants] = useState([]);
@@ -27,7 +26,7 @@ export default function MyHelper() {
     setMessages(m => [...m, { role: "user", text }]);
     setBusy(true);
     try {
-      const { reply, savedEvents } = await postChat(text, null);
+      const { reply } = await postChat(text, null);
       setMessages(m => [...m, { role: "assistant", text: reply }]);
     } catch (e) {
       setMessages(m => [...m, { role: "assistant", text: "Error. Please try again." }]);
