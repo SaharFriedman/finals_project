@@ -125,6 +125,10 @@ export default function PictureDetect() {
       confidence: typeof d.confidence === "number" ? d.confidence : null,
       coords: d.coords,                        
       container: d.container ?? "unknown",
+      lastWateredAt: null,
+      lastFertilizedAt: null,
+      plantedMonth: null,
+      plantedYear: null,
       notes: "",
     })));
   }
@@ -151,6 +155,10 @@ export default function PictureDetect() {
         container: r.container || "unknown",
         coordsPx: r.coords,
         confidence: typeof r.confidence === "number" ? r.confidence : 0,
+        lastWateredAt: r.lastWateredAt || null,
+        lastFertilizedAt: r.lastFertilizedAt || null,
+        plantedMonth: r.plantedMonth ?? null,
+        plantedYear: r.plantedYear ?? null,
         notes: r.notes || "",
       }));
       await bulkUpsertPlants(payload);
@@ -248,6 +256,9 @@ export default function PictureDetect() {
               <th>Container</th>
               <th>Confidence</th>
               <th>Coords [px]</th>
+              <th>Watered</th>
+              <th>Fertilized</th>
+              <th>Planted</th>
               <th>Notes</th>
             </tr>
           </thead>
@@ -262,6 +273,9 @@ export default function PictureDetect() {
                   <td>{r.container}</td>
                   <td>{typeof r.confidence === 'number' ? Math.round(r.confidence * 100) + '%' : ''}</td>
                   <td><code>{JSON.stringify(r.coords)}</code></td>
+                  <td>{r.lastWateredAt ? new Date(r.lastWateredAt).toLocaleString() : ''}</td>
+                  <td>{r.lastFertilizedAt ? new Date(r.lastFertilizedAt).toLocaleString() : ''}</td>
+                  <td>{r.plantedMonth && r.plantedYear ? `${String(r.plantedMonth).padStart(2, '0')}/${r.plantedYear}` : ''}</td>
                   <td>{r.notes || ''}</td>
                 </tr>
               );

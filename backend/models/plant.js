@@ -5,12 +5,16 @@ const PlantSchema = new mongoose.Schema({
   areaId:     { type: mongoose.Schema.Types.ObjectId, ref: "Area",  required: true },
   photoId:    { type: mongoose.Schema.Types.ObjectId, ref: "Photo", required: true },
 
-  idx:        { type: Number, required: true },            // 1..N within that photo
-  label:      { type: String, required: true },            // "Flower", etc.
-  container:  { type: String, default: "unknown" },        // "unknown|Pot|Raised_Bed|ground"
-  coordsPx:   { type: [Number], required: true },          // [x1,y1,x2,y2] pixels
-  confidence: { type: Number, required: true },            // 0..1
+  idx:        { type: Number, required: true },            
+  label:      { type: String, required: true },            
+  container:  { type: String, default: "unknown" },        
+  coordsPx:   { type: [Number], required: true },          
+  confidence: { type: Number, required: true },            
   notes:      { type: String, default: "" },
+  lastWateredAt:    { type: Date, default: null },
+  lastFertilizedAt: { type: Date, default: null },
+  plantedMonth:     { type: Number, min: 1, max: 12, default: null },
+  plantedYear:      { type: Number, min: 1900, max: 3000, default: null },
 }, { timestamps: true });
 
 // Guarantees per-photo numbering uniqueness

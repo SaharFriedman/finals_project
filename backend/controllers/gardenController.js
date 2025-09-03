@@ -229,6 +229,10 @@ exports.bulkUpsertPlants = async (req, res) => {
               confidence: typeof r.confidence === "number" ? r.confidence : 0,
               notes: r.notes || "",
               updatedAt: new Date(),
+              lastWateredAt:    r.lastWateredAt ? new Date(r.lastWateredAt) : null,
+              lastFertilizedAt: r.lastFertilizedAt ? new Date(r.lastFertilizedAt) : null,
+              plantedMonth:     r.plantedMonth != null ? Number(r.plantedMonth) : null,
+              plantedYear:      r.plantedYear  != null ? Number(r.plantedYear)  : null,
             },
           },
           upsert: true,
@@ -303,6 +307,10 @@ exports.listAreaPlants = async (req, res) => {
       confidence: p.confidence,
       notes: p.notes || '',
       createdAt: p.createdAt,
+      lastWateredAt: p.lastWateredAt,
+      lastFertilizedAt: p.lastFertilizedAt,
+      plantedMonth: p.plantedMonth,
+      plantedYear: p.plantedYear,
     })));
   } catch (err) {
     console.error('listAreaPlants error:', err);
