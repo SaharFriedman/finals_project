@@ -1,7 +1,4 @@
-// PlantTable.jsx
-import React from "react";
-
-export default function PlantTable({ rows, setRows, containerOptions = [] }) {
+export default function PlantTable({ rows, setRows}) {
   const update = (idx, patch) =>
     setRows(prev => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
 
@@ -12,12 +9,8 @@ export default function PlantTable({ rows, setRows, containerOptions = [] }) {
     return `${y}-${m}-${dd}`;
   };
   const today = new Date();
-  const todayStr = ymd(today);                       // YYYY-MM-DD
-  const monthMax = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
-  const nowIso = () => new Date().toISOString();
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  const yearStart = new Date().getFullYear();
-  const years = Array.from({ length: 30 }, (_, i) => yearStart - i);
+  const todayStr = ymd(today);
+  const monthMax = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   return (
     <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%", marginTop: 12 }}>
       <thead>

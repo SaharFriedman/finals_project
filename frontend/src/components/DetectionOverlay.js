@@ -1,12 +1,4 @@
-import React, { useEffect, useState } from "react";
-
-/**
- * Props:
- *  - src: object/data URL of the uploaded image
- *  - natural: { width, height } (natural size of the image)
- *  - detections: [{ coords:[x1,y1,x2,y2], label?, confidence? }]
- *  - maxWidth: CSS display width (keeps aspect ratio)
- */
+import React from "react";
 export default function DetectionOverlay({ src, natural, detections, maxWidth = 720 }) {
   const [display, setDisplay] = React.useState({ width: 0, height: 0, scale: 1 });
 
