@@ -1,0 +1,2 @@
+const OPENAI_KEY = "";
+module.exports = { OPENAI_KEY };

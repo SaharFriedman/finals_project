@@ -1,16 +1,15 @@
 import './App.css';
 import MyHelper from './pages/MyHelper';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Home from "./pages/Home";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
-
 import MyGarden from './pages/MyGarden';
-
 import WelcomePage from './pages/Welcome';
 
+// checking if a user is connected.
 export async function isAuthenticated() {
   const t = localStorage.getItem('token');
   if (!t || t === 'undefined' || t === 'null') return false;
@@ -23,26 +22,29 @@ export async function isAuthenticated() {
     return false;
   }
 }
+
+// in order to check connectivity, while loading the  current page and redirect otherwise
 function RequireAuth({ children }) {
-  const location = useLocation();
+  const location = useLocation(); // find the current page
   const [state, setState] = useState('checking'); // 'checking' | 'ok' | 'nope'
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const ok = await isAuthenticated();
+      const ok = await isAuthenticated(); // the user is verified
       if (!mounted) return;
       setState(ok ? 'ok' : 'nope');
-      if (!ok) localStorage.removeItem('token');
+      if (!ok) localStorage.removeItem('token'); // delete the current token if the user is not verified
     })();
     return () => { mounted = false; };
   }, []);
 
-  if (state === 'checking') return <div style={{ padding: 16 }}>Checking session…</div>;
-  if (state === 'nope') return <Navigate to="/signin" replace state={{ from: location }} />;
+  if (state === 'checking') return <div style={{ padding: 16 }}>Checking session…</div>; // wait for the check while loading the screen
+  if (state === 'nope') return <Navigate to="/signin" replace state={{ from: location }} />; // unverified - go to login
   return children;
 }
 function App() {
+  // find the token while starting the app to check for existence. 
   const [token, setToken] = useState(() => localStorage.getItem('token') || '');
   useEffect(() => {
     if (token && token !== 'undefined' && token !== 'null') {
