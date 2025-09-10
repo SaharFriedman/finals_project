@@ -20,3 +20,12 @@ export async function listAreaPlants(areaId) {
   if (!resp.ok) throw new Error(`listAreaPlants failed: ${resp.status}`);
   return resp.json();
 }
+// deleting all of the plants
+export async function deletePlant(plantId) {
+const resp = await fetch(`http://localhost:12345/api/plants/${plantId}`, {
+method: 'DELETE',
+headers: authHeaders(),
+});
+if (!resp.ok) throw new Error(`deletePlant failed: ${resp.status}`);
+return resp.json();
+}

@@ -3,10 +3,10 @@ import DetectionOverlay from "../components/DetectionOverlay";
 import PlantTable from "../components/PlantTable";
 import { savePhotoFile, listAreaPhotos } from "../api/photos";
 import { listAreas, createArea, renameArea } from "../api/areas";
-import { listAreaPlants } from "../api/plants";
+import { listAreaPlants, deletePlant } from "../api/plants";
 import SignOutButton from "../components/SignOutButton";
 import axios from "axios";
-const PREDICT_URL = "http://127.0.0.1:2021/predict";            
+const PREDICT_URL = "http://127.0.0.1:2021/predict";
 
 export default function PictureDetect() {
   // getting all of the photos of the user
@@ -31,7 +31,7 @@ export default function PictureDetect() {
   const [imgURL, setImgURL] = useState("");
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   // rows of the table of plants
-  const [rows, setRows] = useState([]); 
+  const [rows, setRows] = useState([]);
 
   const [photoMeta, setPhotoMeta] = useState(null);
 
@@ -77,14 +77,14 @@ export default function PictureDetect() {
   async function onAddArea() {
     try {
       // create the area, reformat it to match to the others and sort the array of area
-      const raw = await createArea();              
+      const raw = await createArea();
       const a = normalizeAreas([raw])[0];
       // update the handled array      
       setAreas(prev => [...prev, a].sort((x, y) =>
         (x.orderIndex - y.orderIndex) || String(x.name).localeCompare(String(y.name))
       ));
       // update it to be the selected area at the moment
-      setSelectedAreaId(a.area_id);                
+      setSelectedAreaId(a.area_id);
     } catch (e) {
       console.error(e);
       alert("Failed to create area");
@@ -123,6 +123,18 @@ export default function PictureDetect() {
     setRows([]);
     setPhotoMeta(null);
   }
+  // handling to delete post saved plants
+  async function handleDeleteSavedPlant(plantId) {
+    try {
+      await deletePlant(plantId);
+      setSavedPlants(prev => prev.filter(p => p.plant_id !== plantId));
+    } catch (e) {
+      console.error(e);
+      // refactor later
+      alert(e.message || 'Delete failed');
+    }
+  }
+
   // this function handles the detection flow of the page  
   async function runDetect() {
     // refactor the alert!
@@ -143,7 +155,7 @@ export default function PictureDetect() {
       idx: i + 1,
       label: d.label || "Plant",
       confidence: typeof d.confidence === "number" ? d.confidence : null,
-      coords: d.coords,                        
+      coords: d.coords,
       container: d.container ?? "unknown",
       lastWateredAt: null,
       lastFertilizedAt: null,
@@ -198,7 +210,7 @@ export default function PictureDetect() {
           listAreaPhotos(selectedAreaId),
           listAreaPlants(selectedAreaId),
         ]);
-       // save photos and plants
+        // save photos and plants
         setSavedPhotos(photos);
         setSavedPlants(plants);
       } catch (e) {
@@ -215,7 +227,7 @@ export default function PictureDetect() {
     for (const p of savedPlants) {
       const arr = m.get(p.photo_id) || [];
       arr.push({
-        coords: p.coords,         
+        coords: p.coords,
         label: p.label,
         confidence: p.confidence,
         notes: p.notes || "",
@@ -239,7 +251,7 @@ export default function PictureDetect() {
         >
           <option key="__placeholder__" value="" disabled>Select area…</option>
           {areas.map(a => {
-            const id = a.area_id || a._id || a.id || a.areaId; 
+            const id = a.area_id || a._id || a.id || a.areaId;
             return (
               <option key={String(id)} value={String(id)}>
                 {a.name}
@@ -288,7 +300,7 @@ export default function PictureDetect() {
             </tr>
           </thead>
           <tbody>
-          {/* Saved plants rendering */}
+            {/* Saved plants rendering */}
             {savedPlants.map(r => {
               const photo = savedPhotos.find(p => p.photo_id === r.photo_id);
               return (
@@ -302,7 +314,8 @@ export default function PictureDetect() {
                   <td>{r.lastWateredAt ? new Date(r.lastWateredAt).toLocaleString() : ''}</td>
                   <td>{r.lastFertilizedAt ? new Date(r.lastFertilizedAt).toLocaleString() : ''}</td>
                   <td>{r.plantedMonth && r.plantedYear ? `${String(r.plantedMonth).padStart(2, '0')}/${r.plantedYear}` : ''}</td>
-                  <td>{r.notes || ''}</td>
+                  <td><button type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}> Delete</button></td>
+                  <td>{r.notes || ''}</td> 
                 </tr>
               );
             })}
@@ -321,11 +334,11 @@ export default function PictureDetect() {
         <DetectionOverlay
           src={imgURL}
           natural={natural}
-          detections={rows}    
+          detections={rows}
           maxWidth={720}
         />
       </div>
-
+      
       {/* Table + Save */}
       {rows.length > 0 && (
         <>

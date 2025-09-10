@@ -1,5 +1,6 @@
 // a function to render the plant table and functionality (dates logic e.g)
 export default function PlantTable({ rows, setRows}) {
+  const remove = (i) => setRows(prev => prev.filter((_, idx) => idx !== i));
   const update = (idx, patch) =>
     setRows(prev => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
 
@@ -17,6 +18,7 @@ export default function PlantTable({ rows, setRows}) {
       <thead>
         <tr>
           <th>#</th>
+          <th>Delete</th>
           <th>Preview</th>
           <th>Label</th>
           <th>Container</th>
@@ -26,12 +28,16 @@ export default function PlantTable({ rows, setRows}) {
           <th>Watered</th>
           <th>Fertilized</th>
           <th>Planted</th>
+
         </tr>
       </thead>
       <tbody>
         {rows.map((r, i) => (
           <tr key={r.idx ?? i}>
             <td style={{ textAlign: "center", width: 40 }}>{r.idx}</td>
+            <td>
+           <button type="button" onClick={() => remove(i)}>Delete</button>
+           </td>
             <td>
               {r.image && (
                 <img
