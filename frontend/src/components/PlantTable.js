@@ -1,3 +1,4 @@
+// a function to render the plant table and functionality (dates logic e.g)
 export default function PlantTable({ rows, setRows}) {
   const update = (idx, patch) =>
     setRows(prev => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
@@ -48,6 +49,7 @@ export default function PlantTable({ rows, setRows}) {
                 value={r.container || "unknown"}
                 onChange={e => update(i, { container: e.target.value })}
               >
+              {/* replace underscore with " " for raised_garden for example*/}
                 {["unknown", "pot", "raised_bed", "ground"].map(opt => (
                   <option key={opt} value={opt}>
                     {opt.replace(/_/g, " ")}

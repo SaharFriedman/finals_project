@@ -1,4 +1,5 @@
 import React from "react";
+// handle detected picture overlay logic (adding the coordinated display each loading, number on each plant e.g)
 export default function DetectionOverlay({ src, natural, detections, maxWidth = 720 }) {
   const [display, setDisplay] = React.useState({ width: 0, height: 0, scale: 1 });
 

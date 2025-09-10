@@ -4,6 +4,8 @@ import axios from "axios";
 import { authHeaders } from "../api/http";
 import OPENAI_KEY from "../../src/components/apitok"
 const API_BASE = "http://localhost:12345/api";
+// this is the welcome page, it consists some information about the user and recommendations for it
+
 
 
 /** ====================== Utilities ====================== */
@@ -141,7 +143,7 @@ async function listAreas() {
   if (!res.ok) throw new Error(`listAreas failed: ${res.status}`);
   return res.json(); // expect something like [{ _id, name, ... }, ...]
 }
-// returns all of the plants that resides in this areaID
+// returns all of the plants that resides in this areaID using fetch to the server
 async function listAreaPlants(areaId) {
   const res = await fetch(`${API_BASE}/areas/${areaId}/plants`, { headers: { ...authHeaders() } });
   if (!res.ok) throw new Error(`listAreaPlants failed: ${res.status}`);
@@ -244,37 +246,44 @@ const Welcome = () => {
   const [ai, setAi] = useState({ recommendations: [], explanation: "" });
   const [snapshot, setSnapshot] = useState({ areas: [], flat: [] });
 
+
+  // this function creates the garden recommandation scheme and the output is the recommendation that is presented to the user
   async function buildAndSendGardenPlan() {
     setError("");
+    // this is a loading buffer while the API is being called
     setLoading(true);
     // find users coordinations
     try {
       const coords = await new Promise((resolve, reject) => {
         if (!navigator.geolocation) return reject(new Error("Geolocation not supported"));
+        // use geolocation in order to find the user actual location and coordinations- on resolve gets the coordinations under pos.coords
         navigator.geolocation.getCurrentPosition(
           pos => resolve(pos.coords),
           err => reject(new Error(`Geolocation error: ${err.message}`))
         );
       });
       const { latitude, longitude } = coords;
+      // change the location using setState
       setLocation({ latitude, longitude });
-      // use the python server of googleAPI to get the weather data to the JS app 
+      // use the python server of googleAPI to get the weather data to the JS app with the coordinates we found
       const weatherResp = await fetch("http://127.0.0.1:2021/weather", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ latitude, longitude }),
       });
+      // on error... 
       if (!weatherResp.ok) {
         const txt = await weatherResp.text().catch(() => "");
         throw new Error(`Weather HTTP ${weatherResp.status} ${txt}`);
       }
+      // change the format from python and validate response
       let weatherRaw;
       try {
         weatherRaw = await weatherResp.json();
       } catch {
         throw new Error("Weather service returned invalid JSON");
       }
-      // return the raw weather with a flag if the normalization is a failure
+  /** this is the part where we build the full chat prompt using all of the functions we created to get a proper format */
       const weather = normalizeWeather(weatherRaw) ?? { unavailable: true, raw: weatherRaw };
       const plantsByArea = await loadGardenPlantsByArea();
       const flat = flattenPlants(plantsByArea);
@@ -288,7 +297,7 @@ const Welcome = () => {
         plants: flat,
         location: { latitude, longitude },
       };
-
+      
       const answer = await callOpenAI(chatPrompt);
       // to remove
       console.log(answer);
@@ -309,17 +318,18 @@ const Welcome = () => {
         : parsed.recommendations
         ? [parsed.recommendations]
         : [];
-      // making a map of the response devided by rec and exp
+      // use the setAI to present on screen
       setAi({
         recommendations: recs,
         explanation: parsed.explanation || "",
       });
+      // error
     } catch (e) {
       console.error(e);
       setError(e.message || "Unknown error");
       setAi({ recommendations: [], explanation: "" });
     } finally {
-      // finishing the wait for the
+      // finishing the wait for the response
       setLoading(false);
     }
   }

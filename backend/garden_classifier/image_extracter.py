@@ -122,7 +122,7 @@ def predict():
             "container_score": container_score
         })
 
-    return jsonify({"image": out})
+    return jsonify(out)
 
 @app.route("/weather", methods=["POST"])
 def weather():

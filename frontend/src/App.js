@@ -14,6 +14,7 @@ export async function isAuthenticated() {
   const t = localStorage.getItem('token');
   if (!t || t === 'undefined' || t === 'null') return false;
   try {
+    // contact the server API to validate token session
     await axios.get('http://localhost:12345/api/session', {
       headers: { Authorization: `Bearer ${t}` },
     });
@@ -26,20 +27,20 @@ export async function isAuthenticated() {
 // in order to check connectivity, while loading the  current page and redirect otherwise
 function RequireAuth({ children }) {
   const location = useLocation(); // find the current page
-  const [state, setState] = useState('checking'); // 'checking' | 'ok' | 'nope'
+  const [state, setState] = useState('checking'); // 'checking' | 'ok' | 'nope' defined states of validation
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       const ok = await isAuthenticated(); // the user is verified
       if (!mounted) return;
-      setState(ok ? 'ok' : 'nope');
+      setState(ok ? 'ok' : 'nope'); // change the rendering state
       if (!ok) localStorage.removeItem('token'); // delete the current token if the user is not verified
     })();
-    return () => { mounted = false; };
+    return () => { mounted = false; }; // unmount the program
   }, []);
 
-  if (state === 'checking') return <div style={{ padding: 16 }}>Checking session…</div>; // wait for the check while loading the screen
+  if (state === 'checking') return <div style={{ padding: 16 }}>Checking session…</div>; // wait for the check while loading the screen and change the rendering
   if (state === 'nope') return <Navigate to="/signin" replace state={{ from: location }} />; // unverified - go to login
   return children;
 }
@@ -50,9 +51,9 @@ function App() {
     if (token && token !== 'undefined' && token !== 'null') {
       localStorage.setItem('token', token);
     } else {
-      localStorage.removeItem('token');
+      localStorage.removeItem('token'); // cleanup
     }
-  }, [token]);
+  }, [token]); // run whenever token chagne
 
   return (
     <div className="App">

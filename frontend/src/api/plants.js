@@ -1,6 +1,7 @@
 import { authHeaders } from './http';
 const API_BASE = 'http://localhost:12345/api';
 
+// posting the plant table
 export async function bulkUpsertPlants(rows) {
   const resp = await fetch(`${API_BASE}/plants`, {
     method: 'POST',
@@ -11,7 +12,7 @@ export async function bulkUpsertPlants(rows) {
   return resp.json();
 }
 
-
+// getting all of the plants by areaID
 export async function listAreaPlants(areaId) {
   const resp = await fetch(`${API_BASE}/areas/${areaId}/plants`, {
     headers: authHeaders(),
