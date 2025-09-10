@@ -1,17 +1,18 @@
 import { authHeaders } from "./http";
 const API_BASE = "http://localhost:12345/api/helper";
 
+// getting all of the context from the DB
 export async function getHelperContext() {
   const res = await fetch(`${API_BASE}/context`, { headers: authHeaders() });
   if (!res.ok) throw new Error("helper context failed");
   return res.json();
 }
 
-export async function postChat(message, areaId=null) {
+export async function postChat(message) {
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ message, area_id: areaId }),
+    body: JSON.stringify({ message}),
   });
   if (!res.ok) throw new Error("helper chat failed");
   return res.json();

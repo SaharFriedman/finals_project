@@ -11,7 +11,6 @@ const toOid = (v) => (v && mongoose.Types.ObjectId.isValid(v) ? new mongoose.Typ
 // Summarize per-plant last events
 async function getContext(userId) {
   const plants = await Plant.find({ userId }, { label: 1, areaId: 1 }).lean();
-  const plantIds = plants.map(p => p._id);
   const events = await Event.aggregate([
     { $match: { userId } },
     { $sort: { happenedAt: -1 } },
@@ -29,37 +28,20 @@ async function getContext(userId) {
   return ctx;
 }
 
-// Simple rule to compute next watering - replace with species table and weather later
-function computeNextWatering(last, plantLabel) {
-  const baseDays = /tomato/i.test(plantLabel) ? 3 : 5;
-  if (!last?.at) return { dueInDays: 0, reason: "No watering history - start baseline schedule" };
-  const ms = Date.now() - new Date(last.at).getTime();
-  const days = Math.floor(ms / (1000*60*60*24));
-  const remain = Math.max(baseDays - days, 0);
-  return { dueInDays: remain, reason: `Baseline ${baseDays} day cadence for ${plantLabel}` };
-}
-
 // GET /api/helper/context
 exports.getContext = async (req, res) => {
   try {
     const userId = toOid(req.userId);
     if (!userId) return res.status(401).json({ error: "unauthorized" });
     const ctx = await getContext(userId);
-
-    // Add naive due calculation
-    const enriched = ctx.map(p => ({
-      ...p,
-      next_water: computeNextWatering(p.last_water, p.label)
-    }));
-
-    res.json({ plants: enriched });
+    res.json({ plants: ctx });
   } catch (e) {
     console.error("helper.getContext error", e);
     res.status(500).json({ error: "internal_error" });
   }
 };
 
-// POST /api/helper/chat  { message, area_id? }
+// POST /api/helper/chat  { message, area_id? } -> providing full chat prompt context and more to give a personal smart bot
 exports.chat = async (req, res) => {
   try {
     const userId = toOid(req.userId);
@@ -76,50 +58,24 @@ exports.chat = async (req, res) => {
     // Build a constrained prompt with instruction to return optional JSON block
     const sys = `You are My Helper - a personal garden assistant. 
 You answer using the user's private garden data. Never invent dates. 
-Avoid repeating the same advice within 7 days if already given. 
-If you detect the user logging an action like watering or fertilizing, include a JSON block named EVENTS at the end with one or more event objects fields: type, plant_label or plant_id, amount, units, happenedAt (ISO), notes. `;
+Avoid repeating the same advice within recent history if already given.`;
 
+    // recent messages with a limit of 8 recent commands
     const recent = await ChatMessage.find({ userId }).sort({ createdAt: -1 }).limit(8).lean();
+    // provide role and content
     const history = recent.reverse().map(m => ({ role: m.role, content: m.text }));
 
-    const ctxStr = JSON.stringify(ctx.slice(0, 50)); // keep it bounded
+    const ctxStr = JSON.stringify(ctx.slice(0, 100)); // keep it bounded
+    // messages is the prompt given to the LLM with: 1) system initial prompt 2) user's plants 3) chat history of 8 responses 4) user's message  
     const messages = [
       { role: "system", content: sys },
       { role: "system", content: `USER_PLANTS=${ctxStr}` },
       ...history,
       { role: "user", content: message }
     ];
-
+  // LLM response
     const out = await callLLM(messages);
     const text = out.text || "Sorry - no response";
-
-    // Try to parse optional EVENTS JSON
-    let saved = [];
-    const match = text.match(/```json\s*EVENTS\s*([\s\S]*?)```/i) || text.match(/EVENTS:\s*(\[.*\])/i);
-    if (match) {
-      try {
-        const payload = JSON.parse(match[1]);
-        if (Array.isArray(payload)) {
-          for (const ev of payload) {
-            const plant = ctx.find(p => String(p.plant_id) === String(ev.plant_id) || (ev.plant_label && p.label?.toLowerCase() === ev.plant_label.toLowerCase()));
-            const rec = await Event.create({
-              userId,
-              areaId: plant ? plant.area_id : (area_id ? toOid(area_id) : null),
-              plantId: plant ? toOid(plant.plant_id) : null,
-              type: ev.type || "note",
-              amount: typeof ev.amount === "number" ? ev.amount : null,
-              units: ev.units || "",
-              notes: ev.notes || "",
-              happenedAt: ev.happenedAt ? new Date(ev.happenedAt) : new Date(),
-              source: "user"
-            });
-            saved.push({ id: String(rec._id), type: rec.type });
-          }
-        }
-      } catch (e) {
-        // ignore parse errors
-      }
-    }
 
     // Store assistant turn
     await ChatMessage.create({ userId, role: "assistant", text });

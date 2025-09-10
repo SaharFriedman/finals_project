@@ -1,13 +1,15 @@
-// src/pages/Welcome.jsx
 import SignOutButton from "../components/SignOutButton";
-import React, { useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { authHeaders } from "../api/http";
+import OPENAI_KEY from "../../src/components/apitok"
 const API_BASE = "http://localhost:12345/api";
+// this is the welcome page, it consists some information about the user and recommendations for it
+
 
 
 /** ====================== Utilities ====================== */
-
+// checking the result of the weather forecast (google can change the output name)
 function normalizeWeather(result) {
   if (!result) return null;
   if (result.daily_sun_data) return result.daily_sun_data;
@@ -17,6 +19,7 @@ function normalizeWeather(result) {
   return null;
 }
 
+// verifying plantDoc name until finalized project
 function normalizePlantDoc(d) {
   // label
   const label =
@@ -27,7 +30,7 @@ function normalizePlantDoc(d) {
     d?.species ??
     "Plant";
 
-  // try several coord shapes: coords, coordsPx, coords_px, bounding_box, x1..y2
+  // try several coord shapes: coords, coordsPx, coords_px, bounding_box, x1..y2 until finished project
   const arr =
     toFour(d?.coords) ||
     toFour(d?.coordsPx) ||
@@ -75,17 +78,19 @@ function toFour(src) {
   return null;
 }
 
+
+// taking the text and extract only the JSON
 function extractJsonFromText(text) {
   if (!text || typeof text !== "string") return null;
 
-  // 1) Prefer content inside triple fences if present
+  // Prefer content inside triple fences if present
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   let s = fence ? fence[1].trim() : text.trim();
 
-  // 2) Try a straight parse first
+  // Try a straight parse first
   try { return JSON.parse(s); } catch {}
 
-  // 3) If there is an object, extract the first balanced {...}
+  // If there is an object, extract the first balanced {...}
   const objStart = s.indexOf("{");
   const arrStart = s.indexOf("[");
   let start = -1, mode = null;
@@ -120,32 +125,32 @@ function extractJsonFromText(text) {
     try { return JSON.parse(candidate); } catch {}
   }
 
-  // 4) As a last resort, walk left from the last '}' or ']'
+  // As a last resort, walk left from the last '}' or ']'
   //    to recover a parseable prefix
   const lastClose = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
   for (let i = lastClose; i >= start && i >= 0; i--) {
     const slice = s.slice(start, i + 1);
     try { return JSON.parse(slice); } catch {}
   }
-
   return null;
 }
 
 /** ====================== API wrappers ====================== */
 
+// returns the list of all of the areas there are
 async function listAreas() {
   const res = await fetch(`${API_BASE}/areas`, { headers: { ...authHeaders() } });
   if (!res.ok) throw new Error(`listAreas failed: ${res.status}`);
   return res.json(); // expect something like [{ _id, name, ... }, ...]
 }
-
+// returns all of the plants that resides in this areaID using fetch to the server
 async function listAreaPlants(areaId) {
   const res = await fetch(`${API_BASE}/areas/${areaId}/plants`, { headers: { ...authHeaders() } });
   if (!res.ok) throw new Error(`listAreaPlants failed: ${res.status}`);
   return res.json(); // array of plant docs for that area
 }
 
-/** Load whole garden grouped by areas */
+// Load whole garden grouped by areas
 async function loadGardenPlantsByArea() {
   const areas = await listAreas();
 
@@ -165,11 +170,10 @@ async function loadGardenPlantsByArea() {
       return { ...a, plants };
     })
   );
-
   return perArea;
 }
 
-/** Also provide a flat list in case you still want it */
+// taking the plants and adding the area name and ID to a nice JSON format
 function flattenPlants(plantsByArea) {
   const flat = [];
   for (const area of plantsByArea) {
@@ -181,20 +185,16 @@ function flattenPlants(plantsByArea) {
 }
 
 /** ====================== LLM call ====================== */
-/**
- * Strongly recommended: move this to your server and call your own endpoint.
- * Leaving this client side is for demo only.
- */
+
 async function callOpenAI(jsonInput) {
-  const apiKey = "c56ca245131b616981ea84923cca06342a12d2ff142475979ad57d0d09e485a6";
+  const apiKey = OPENAI_KEY;
 
   const systemMessage = `
 You are a smart gardening assistant. Based on the weather forecast, sunlight data, and the user's garden layout, generate care instructions.
 
 Input fields you may receive:
-- weather: array of daily objects (for example, date, sunrise, sunset, daylight_duration)
+- weather: array of daily objects (for example, date, sunrise, sunset, daylight_duration,amount of rain)
 - plants_by_area: array of { area_id, area_name, plants: [{ plant_label, bounding_box }] }
-- plants: optional flat fallback array of { plant_label, bounding_box, area_id?, area_name? }
 - location: { latitude: number, longitude: number }
 
 If weather data is unavailable or marked {"unavailable": true}, infer conservative defaults and say the weather data was unavailable.
@@ -209,6 +209,7 @@ Return ONLY valid JSON with this exact schema (no extra text):
       "area_name": "Front Bed",
       "water_liters_per_week": 4.5,
       "fertilizer_dates": ["2025-09-05", "2025-10-03"]
+      "tip of the day": a short tip regarding an aspect of the garden that is not repetitive
     }
   ],
   "explanation": "One short paragraph explaining key decisions."
@@ -236,6 +237,8 @@ Return ONLY valid JSON with this exact schema (no extra text):
   return response;
 }
 
+
+/** ====================== main method ====================== */
 const Welcome = () => {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState("");
@@ -243,75 +246,90 @@ const Welcome = () => {
   const [ai, setAi] = useState({ recommendations: [], explanation: "" });
   const [snapshot, setSnapshot] = useState({ areas: [], flat: [] });
 
+
+  // this function creates the garden recommandation scheme and the output is the recommendation that is presented to the user
   async function buildAndSendGardenPlan() {
     setError("");
+    // this is a loading buffer while the API is being called
     setLoading(true);
+    // find users coordinations
     try {
       const coords = await new Promise((resolve, reject) => {
         if (!navigator.geolocation) return reject(new Error("Geolocation not supported"));
+        // use geolocation in order to find the user actual location and coordinations- on resolve gets the coordinations under pos.coords
         navigator.geolocation.getCurrentPosition(
           pos => resolve(pos.coords),
           err => reject(new Error(`Geolocation error: ${err.message}`))
         );
       });
       const { latitude, longitude } = coords;
+      // change the location using setState
       setLocation({ latitude, longitude });
-
+      // use the python server of googleAPI to get the weather data to the JS app with the coordinates we found
       const weatherResp = await fetch("http://127.0.0.1:2021/weather", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ latitude, longitude }),
       });
+      // on error... 
       if (!weatherResp.ok) {
         const txt = await weatherResp.text().catch(() => "");
         throw new Error(`Weather HTTP ${weatherResp.status} ${txt}`);
       }
+      // change the format from python and validate response
       let weatherRaw;
       try {
         weatherRaw = await weatherResp.json();
       } catch {
         throw new Error("Weather service returned invalid JSON");
       }
+  /** this is the part where we build the full chat prompt using all of the functions we created to get a proper format */
       const weather = normalizeWeather(weatherRaw) ?? { unavailable: true, raw: weatherRaw };
       const plantsByArea = await loadGardenPlantsByArea();
       const flat = flattenPlants(plantsByArea);
+      // creating this json by areas
       setSnapshot({ areas: plantsByArea, flat });
 
-      
+      // this is the chat Prompt, what will be sent to the API of LLM
       const chatPrompt = {
         weather,
         plants_by_area: plantsByArea,
         plants: flat,
         location: { latitude, longitude },
       };
-
+      
       const answer = await callOpenAI(chatPrompt);
+      // to remove
       console.log(answer);
+      // to get the content w.o relying on the organization of the LLM JSON response
       const content = answer?.data?.choices?.[0]?.message?.content ?? "";
       const parsed = extractJsonFromText(content);
 
+      // checking the response of the API properly
       if (!parsed) {
         console.warn("LLM did not return valid JSON. Raw:", content);
         setAi({ recommendations: [], explanation: "" });
         setError("The AI response was not valid JSON. Check console for details.");
         return;
       }
-
+      // SAME HERE
       const recs = Array.isArray(parsed.recommendations)
         ? parsed.recommendations
         : parsed.recommendations
         ? [parsed.recommendations]
         : [];
-
+      // use the setAI to present on screen
       setAi({
         recommendations: recs,
         explanation: parsed.explanation || "",
       });
+      // error
     } catch (e) {
       console.error(e);
       setError(e.message || "Unknown error");
       setAi({ recommendations: [], explanation: "" });
     } finally {
+      // finishing the wait for the response
       setLoading(false);
     }
   }

@@ -1,13 +1,15 @@
 
 import { useEffect, useState } from "react";
 import { getHelperContext, postChat } from "../api/helper";
-
+// this is the my-helper page, a bot using chatGPT for my garden. with tools, action memories and more
 export default function MyHelper() {
+  // the plants of the user
   const [plants, setPlants] = useState([]);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // getting the plants to provide garden context
   useEffect(() => {
     (async () => {
       try {
@@ -19,13 +21,17 @@ export default function MyHelper() {
     })();
   }, []);
 
+
   async function send() {
     if (!input.trim()) return;
     const text = input.trim();
     setInput("");
+    // each user input is declared as a user message
     setMessages(m => [...m, { role: "user", text }]);
+    // sending the API
     setBusy(true);
     try {
+      // each API's output is declaired as an assistent message
       const { reply } = await postChat(text, null);
       setMessages(m => [...m, { role: "assistant", text: reply }]);
     } catch (e) {
@@ -36,6 +42,7 @@ export default function MyHelper() {
   }
 
   return (
+    /* parsing context to screen */
     <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "16px", height: "calc(100vh - 80px)", padding: "16px" }}>
       <aside style={{ overflow: "auto", borderRight: "1px solid #333", paddingRight: 12 }}>
         <h2>My plants</h2>
@@ -43,7 +50,6 @@ export default function MyHelper() {
           <div key={p.plant_id} style={{ padding: "8px 0", borderBottom: "1px solid #333" }}>
             <div style={{ fontWeight: 600 }}>{p.label}</div>
             <div style={{ fontSize: 12 }}>Last water: {p.last_water ? `${new Date(p.last_water.at).toLocaleString()} - ${p.last_water.amount||""} ${p.last_water.units||""}` : "none"}</div>
-            <div style={{ fontSize: 12 }}>Next water in: {p.next_water?.dueInDays} day(s)</div>
           </div>
         ))}
       </aside>
@@ -56,6 +62,7 @@ export default function MyHelper() {
             </div>
           ))}
         </div>
+      {/* form settings */}
         <div style={{ display: "flex", gap: 8 }}>
           <input
             placeholder="Ask anything - e.g., When did I water my tomatoes?"

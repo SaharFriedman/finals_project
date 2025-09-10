@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
-
+// this page is the same as the signUp page, for reference go there
 function SignIn() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

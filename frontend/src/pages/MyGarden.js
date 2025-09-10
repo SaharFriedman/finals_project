@@ -3,49 +3,59 @@ import DetectionOverlay from "../components/DetectionOverlay";
 import PlantTable from "../components/PlantTable";
 import { savePhotoFile, listAreaPhotos } from "../api/photos";
 import { listAreas, createArea, renameArea } from "../api/areas";
-import { bulkUpsertPlants, listAreaPlants } from "../api/plants";
+import { listAreaPlants } from "../api/plants";
 import SignOutButton from "../components/SignOutButton";
 import axios from "axios";
 const PREDICT_URL = "http://127.0.0.1:2021/predict";            
 
 export default function PictureDetect() {
+  // getting all of the photos of the user
   const [savedPhotos, setSavedPhotos] = useState([]);
+  // getting all of the plants of the user
   const [savedPlants, setSavedPlants] = useState([]);
-  // Areas
+  // getting all of the areas of the user
   const [areas, setAreas] = useState([]);
+  // to find which area the user is currently looking at
   const [selectedAreaId, setSelectedAreaId] = useState("");
+  // changing the name of the list to work with several methods of the API w.o relaying on the server 
   function normalizeAreas(list) {
-    return (list || [])
+    return (list || [])//map the list with area name and id
       .map((x, i) => ({
         area_id: x.area_id || x._id || x.id || x.areaId || null,
         name: x.name || x.area_name || `area${i + 1}`,
         orderIndex: x.orderIndex ?? Number.MAX_SAFE_INTEGER,
       }))
-      .filter(x => !!x.area_id);
+      .filter(x => !!x.area_id);// filter areas w.o an ID
   }
   const [file, setFile] = useState(null);
   const [imgURL, setImgURL] = useState("");
   const [natural, setNatural] = useState({ width: 0, height: 0 });
+  // rows of the table of plants
   const [rows, setRows] = useState([]); 
 
   const [photoMeta, setPhotoMeta] = useState(null);
 
   const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
-
+  // this useEffect is handling areas data
   useEffect(() => {
     (async () => {
       try {
-        const a = await listAreas(); 
+        // a = list of all areas
+        const a = await listAreas();
+        // getting the ID's 
         const norm = normalizeAreas(a);
+        // setting norm as the "areas" constant at default 
         setAreas(norm);
+        // set first ID as the default selected area of the user as default
         if (norm.length) setSelectedAreaId(norm[0].area_id);
       } catch (err) {
         console.error(err);
       }
     })();
   }, []);
+  // this useEffect is handling photo and plants data
   useEffect(() => {
-    if (!selectedAreaId || String(selectedAreaId).length < 8) {
+    if (!selectedAreaId) {
       setSavedPhotos([]);
       setSavedPlants([]);
       return;
@@ -62,53 +72,62 @@ export default function PictureDetect() {
         console.error("load saved for area failed", e);
       }
     })();
-  }, [selectedAreaId]);
-
+  }, [selectedAreaId]);// do it whenever the selectedAreaId is changed(by the toggle bar)
+  // this function handles an addition of a new area
   async function onAddArea() {
     try {
+      // create the area, reformat it to match to the others and sort the array of area
       const raw = await createArea();              
-      const a = normalizeAreas([raw])[0];          
-
+      const a = normalizeAreas([raw])[0];
+      // update the handled array      
       setAreas(prev => [...prev, a].sort((x, y) =>
         (x.orderIndex - y.orderIndex) || String(x.name).localeCompare(String(y.name))
       ));
+      // update it to be the selected area at the moment
       setSelectedAreaId(a.area_id);                
     } catch (e) {
       console.error(e);
       alert("Failed to create area");
     }
   }
-
+  // handle subbmision for a new area name to a selected area
   async function onRenameArea() {
     if (!selectedAreaId) return;
+    // need to change the prompt to be nicer
     const name = prompt("New area name (e.g., Front yard):");
     if (!name) return;
     try {
+      // rename the area
       const updated = await renameArea(selectedAreaId, name);
+      /* update the array of areas represented to the user
+         prev is the array that we currently have of areas in  
+         setAreas and we map each x in the area and return the new array that is the result */
       setAreas(prev => prev.map(x => x.area_id === updated.area_id ? updated : x));
     } catch (e) {
       console.error(e);
+      // refactor the alert!
       alert("Rename failed");
     }
   }
 
+  // handling the image after inputing a file
   const handleFileChange = (e) => {
     const f = e.target.files?.[0] || null;
     if (!f) return;
     setFile(f);
-
     const url = URL.createObjectURL(f);
     setImgURL(url);
     const probe = new Image();
     probe.onload = () => setNatural({ width: probe.naturalWidth, height: probe.naturalHeight });
     probe.src = url;
-
     setRows([]);
     setPhotoMeta(null);
   }
-
+  // this function handles the detection flow of the page  
   async function runDetect() {
+    // refactor the alert!
     if (!file) return alert("Choose a photo first.");
+    // run the prediction model of the python server
     const fd = new FormData();
     fd.append("image", file);
     const res = await fetch(PREDICT_URL, { method: "POST", body: fd });
@@ -116,8 +135,9 @@ export default function PictureDetect() {
       console.error("Detect failed", res.status);
       return alert("Detect failed");
     }
+    // recieve the data from the python server API
     const data = await res.json();
-    const arr = Array.isArray(data.image) ? data.image : [];
+    const arr = Array.isArray(data) ? data : [];
 
     setRows(arr.map((d, i) => ({
       idx: i + 1,
@@ -135,16 +155,18 @@ export default function PictureDetect() {
 
   async function handleSavePhotoAndPlants() {
     try {
+      // verify that the user selected everything properly
       if (!selectedAreaId) return alert("Select or add an area first.");
       if (!file) return alert("Choose a photo first.");
       if (!rows.length) return alert("No plants to save.");
-
+      // add a date to the 
       const takenAt = new Date().toISOString();
       const { photo_id, photo_url, slot } = await savePhotoFile({
         file,
         areaId: selectedAreaId,
         takenAt,
       });
+      // updating the photo meta data 
       setPhotoMeta({ photo_id, photo_url, slot });
 
       const payload = rows.map(r => ({
@@ -161,7 +183,7 @@ export default function PictureDetect() {
         plantedYear: r.plantedYear ?? null,
         notes: r.notes || "",
       }));
-      await bulkUpsertPlants(payload);
+      // upload the table to the server and save it in the plants DB
       const token = localStorage.getItem("token");
       await axios.post("http://localhost:12345/api/plants", payload, {
         headers: {
@@ -169,12 +191,14 @@ export default function PictureDetect() {
           Authorization: `Bearer ${token}`
         }
       });
+      // refactor alert!
       alert(`Saved! (Photo slot ${slot})`);
       try {
         const [photos, plants] = await Promise.all([
           listAreaPhotos(selectedAreaId),
           listAreaPlants(selectedAreaId),
         ]);
+       // save photos and plants
         setSavedPhotos(photos);
         setSavedPlants(plants);
       } catch (e) {
@@ -185,6 +209,7 @@ export default function PictureDetect() {
       alert(e.message || "Save failed");
     }
   }
+  // compute the plants that are saved and return with some parameters only when savedplants are changed
   const plantsByPhoto = React.useMemo(() => {
     const m = new Map();
     for (const p of savedPlants) {
@@ -263,6 +288,7 @@ export default function PictureDetect() {
             </tr>
           </thead>
           <tbody>
+          {/* Saved plants rendering */}
             {savedPlants.map(r => {
               const photo = savedPhotos.find(p => p.photo_id === r.photo_id);
               return (

@@ -1,3 +1,4 @@
+// home page is the website's first page the allow signUp, signIn and some information about the website.
 function Home() {
     return (
         <div>
