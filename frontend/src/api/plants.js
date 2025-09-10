@@ -11,7 +11,6 @@ export async function bulkUpsertPlants(rows) {
   if (!resp.ok) throw new Error(`bulkUpsertPlants failed: ${resp.status}`);
   return resp.json();
 }
-
 // getting all of the plants by areaID
 export async function listAreaPlants(areaId) {
   const resp = await fetch(`${API_BASE}/areas/${areaId}/plants`, {

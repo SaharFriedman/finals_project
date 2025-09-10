@@ -5,6 +5,8 @@ import { savePhotoFile, listAreaPhotos } from "../api/photos";
 import { listAreas, createArea, renameArea } from "../api/areas";
 import { listAreaPlants, deletePlant } from "../api/plants";
 import SignOutButton from "../components/SignOutButton";
+import { useMemo, useRef } from "react";
+import BBoxPicker from "../components/BBoxPicker";
 import axios from "axios";
 const PREDICT_URL = "http://127.0.0.1:2021/predict";
 
@@ -17,6 +19,13 @@ export default function PictureDetect() {
   const [areas, setAreas] = useState([]);
   // to find which area the user is currently looking at
   const [selectedAreaId, setSelectedAreaId] = useState("");
+  const [savedNew, setSavedNew] = useState(null);      // { photo, idx, label, container, coords, ... }
+  const [pickerSavedOpen, setPickerSavedOpen] = useState(false);
+  const savedImgRef = useRef(null);
+  const [newRow, setNewRow] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const imgPickRef = useRef(null);
+
   // changing the name of the list to work with several methods of the API w.o relaying on the server 
   function normalizeAreas(list) {
     return (list || [])//map the list with area name and id
@@ -36,6 +45,61 @@ export default function PictureDetect() {
   const [photoMeta, setPhotoMeta] = useState(null);
 
   const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
+  /**************************** this is th helpers for adding a new plant***************************************************/
+  // next idx inside the current rows table
+  const nextIdx = useMemo(() => {
+    const maxInRows = rows.reduce((m, r) => Math.max(m, Number(r.idx || 0)), 0);
+    return maxInRows + 1;
+  }, [rows]);
+
+  function onAddNewPlant() {
+    if (!file || !imgURL) {
+      alert("Choose a photo first.");
+      return;
+    }
+    setNewRow({
+      idx: nextIdx,
+      label: "",
+      container: "unknown",
+      coords: null,              // will be set by picker
+      confidence: 0.99,
+      notes: "",
+      lastWateredAt: null,
+      lastFertilizedAt: null,
+      plantedMonth: null,
+      plantedYear: null,
+    });
+  }
+
+  function onPickCoords() {
+    if (!imgURL) {
+      alert("No image loaded.");
+      return;
+    }
+    setPickerOpen(true);
+  }
+
+  function onCoordsPicked(coordsPx) {
+    // picker returns [x,y,w,h] in original pixels - convert to [x1,y1,x2,y2]
+    const xyxy = xywhToXyxy(coordsPx);
+    setNewRow(prev => ({ ...prev, coords: xyxy }));
+    setPickerOpen(false);
+  }
+
+  function onSaveNewRow() {
+    if (!newRow?.label?.trim()) return alert("Label is required.");
+    if (!Array.isArray(newRow?.coords)) return alert("Please pick coordinates on the photo.");
+    setRows(prev => [...prev, { ...newRow }]);
+    setNewRow(null);
+  }
+
+  function onCancelNewRow() {
+    setNewRow(null);
+    setPickerOpen(false);
+  }
+
+  /**************************** this is the end for helpers***************************************************/
+
   // this useEffect is handling areas data
   useEffect(() => {
     (async () => {
@@ -134,7 +198,12 @@ export default function PictureDetect() {
       alert(e.message || 'Delete failed');
     }
   }
-
+  // to fix rendering from plant adding
+  function xywhToXyxy(c) {
+    if (!Array.isArray(c) || c.length !== 4) return null;
+    const [x, y, w, h] = c.map(Number);
+    return [x, y, x + Math.max(1, w), y + Math.max(1, h)];
+  }
   // this function handles the detection flow of the page  
   async function runDetect() {
     // refactor the alert!
@@ -226,8 +295,9 @@ export default function PictureDetect() {
     const m = new Map();
     for (const p of savedPlants) {
       const arr = m.get(p.photo_id) || [];
+      const c = p.coords ?? p.coordsPx ?? null;
       arr.push({
-        coords: p.coords,
+        coords: c,
         label: p.label,
         confidence: p.confidence,
         notes: p.notes || "",
@@ -237,6 +307,7 @@ export default function PictureDetect() {
     }
     return m;
   }, [savedPlants]);
+
 
   return (
     <div style={{ padding: 16 }}>
@@ -277,6 +348,139 @@ export default function PictureDetect() {
                 detections={plantsByPhoto.get(p.photo_id) || []}
                 maxWidth={480}
               />
+              <button
+                type="button"
+                style={{ marginTop: 6 }}
+                onClick={() => {
+                  const maxIdx = Math.max(
+                    0,
+                    ...savedPlants.filter(sp => sp.photo_id === p.photo_id).map(sp => sp.idx || 0)
+                  );
+                  setSavedNew({
+                    photo: p,
+                    idx: maxIdx + 1,
+                    label: "",
+                    container: "unknown",
+                    coords: null, // will be set by picker
+                    confidence: 0.99,
+                    notes: "",
+                  });
+                  setPickerSavedOpen(true);
+                }}
+              >
+                Add plant
+              </button>
+              {/* extra plain image only used for the picker overlay */}
+              <div style={{ position: "relative" }}>
+                <img
+                  ref={savedNew?.photo?.photo_id === p.photo_id ? savedImgRef : null}
+                  src={`http://localhost:12345${p.photo_url}`}
+                  alt=""
+                  style={{ maxWidth: 480, width: "100%", height: "auto", display: "block", border: "1px solid #eee", marginTop: 6 }}
+                />
+                {pickerSavedOpen && savedNew?.photo?.photo_id === p.photo_id && (
+                  <BBoxPicker
+                    imgRef={savedImgRef}
+                    onConfirm={(coordsPx) => {
+                      // picker returns [x,y,w,h] - store as [x1,y1,x2,y2]
+                      const xyxy = xywhToXyxy(coordsPx);
+                      setSavedNew(prev => ({ ...prev, coords: xyxy }));
+                      setPickerSavedOpen(false);
+                    }}
+                    onCancel={() => setPickerSavedOpen(false)}
+                  />
+                )}
+              </div>
+              {savedNew?.photo?.photo_id === p.photo_id && (
+                <div style={{ marginTop: 8, padding: 8, border: "1px solid #ddd", borderRadius: 6 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}>
+                    <div>Idx</div><div>{savedNew.idx}</div>
+                    <div>Label *</div>
+                    <div>
+                      <input
+                        value={savedNew.label}
+                        onChange={e => setSavedNew({ ...savedNew, label: e.target.value })}
+                        placeholder="e.g., Tomato"
+                      />
+                    </div>
+                    <div>Container</div>
+                    <div>
+                      <select
+                        value={savedNew.container}
+                        onChange={e => setSavedNew({ ...savedNew, container: e.target.value })}
+                      >
+                        {CONTAINERS.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>Confidence</div>
+                    <div>
+                      <input
+                        type="number" step="0.01" min="0" max="1"
+                        value={savedNew.confidence}
+                        onChange={e => setSavedNew({ ...savedNew, confidence: e.target.value })}
+                      />
+                    </div>
+                    <div>Coords *</div>
+                    <div>
+                      <code>{savedNew.coords ? JSON.stringify(savedNew.coords) : "(pick on photo above)"}</code>
+                    </div>
+                    <div>Notes</div>
+                    <div>
+                      <input
+                        value={savedNew.notes}
+                        onChange={e => setSavedNew({ ...savedNew, notes: e.target.value })}
+                        placeholder="optional notes"
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!savedNew.label.trim()) return alert("Label is required.");
+                        if (!Array.isArray(savedNew.coords)) return alert("Pick coords on the photo.");
+                        const token = localStorage.getItem("token");
+                        const payload = [{
+                          area_id: selectedAreaId,
+                          photo_id: savedNew.photo.photo_id,
+                          idx: savedNew.idx,
+                          label: savedNew.label.trim(),
+                          container: savedNew.container || "unknown",
+                          coordsPx: savedNew.coords, // server expects pixels
+                          confidence: Number(savedNew.confidence) || 0.99,
+                          notes: savedNew.notes || "",
+                          lastWateredAt: null,
+                          lastFertilizedAt: null,
+                          plantedMonth: null,
+                          plantedYear: null,
+                        }];
+                        try {
+                          await axios.post("http://localhost:12345/api/plants", payload, {
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+                          });
+                          // refresh lists
+                          const [photos2, plants2] = await Promise.all([
+                            listAreaPhotos(selectedAreaId),
+                            listAreaPlants(selectedAreaId),
+                          ]);
+                          setSavedPhotos(photos2);
+                          setSavedPlants(plants2);
+                          setSavedNew(null);
+                        } catch (e) {
+                          console.error(e);
+                          alert(e.message || "Save failed");
+                        }
+                      }}
+                    >
+                      Save plant
+                    </button>
+                    <button type="button" onClick={() => { setSavedNew(null); setPickerSavedOpen(false); }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           ))}
         </div>
@@ -310,12 +514,12 @@ export default function PictureDetect() {
                   <td>{r.label}</td>
                   <td>{r.container}</td>
                   <td>{typeof r.confidence === 'number' ? Math.round(r.confidence * 100) + '%' : ''}</td>
-                  <td><code>{JSON.stringify(r.coords)}</code></td>
+                  <td><code>{JSON.stringify(r.coords ?? r.coordsPx)}</code></td>
                   <td>{r.lastWateredAt ? new Date(r.lastWateredAt).toLocaleString() : ''}</td>
                   <td>{r.lastFertilizedAt ? new Date(r.lastFertilizedAt).toLocaleString() : ''}</td>
                   <td>{r.plantedMonth && r.plantedYear ? `${String(r.plantedMonth).padStart(2, '0')}/${r.plantedYear}` : ''}</td>
                   <td><button type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}> Delete</button></td>
-                  <td>{r.notes || ''}</td> 
+                  <td>{r.notes || ''}</td>
                 </tr>
               );
             })}
@@ -328,7 +532,9 @@ export default function PictureDetect() {
       <button onClick={runDetect} disabled={!file} style={{ marginLeft: 8 }}>
         Detect
       </button>
-
+      <button onClick={onAddNewPlant} disabled={!file} style={{ marginLeft: 8 }}>
+        Add new plant
+      </button>
       {/* Image + overlay */}
       <div style={{ marginTop: 12 }}>
         <DetectionOverlay
@@ -338,7 +544,99 @@ export default function PictureDetect() {
           maxWidth={720}
         />
       </div>
-      
+      {/* Manual box picker overlay over the same photo */}
+      {pickerOpen && imgURL && (
+        <div style={{ position: "relative", display: "inline-block", marginTop: 8 }}>
+          <img
+            ref={imgPickRef}
+            src={imgURL}
+            alt=""
+            style={{ maxWidth: 720, width: "100%", height: "auto", display: "block", border: "1px solid #ddd" }}
+          />
+          <BBoxPicker
+            imgRef={imgPickRef}
+            onConfirm={onCoordsPicked}
+            onCancel={() => setPickerOpen(false)}
+          />
+        </div>
+
+
+      )}
+
+      {newRow && (
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid #ddd", maxWidth: 820 }}>
+          <h3>Add a new plant</h3>
+          <table cellPadding={6} style={{ borderCollapse: "collapse" }}>
+            <tbody>
+              <tr>
+                <td>Idx</td>
+                <td>{newRow.idx}</td>
+              </tr>
+              <tr>
+                <td>Label *</td>
+                <td>
+                  <input
+                    value={newRow.label}
+                    onChange={e => setNewRow({ ...newRow, label: e.target.value })}
+                    placeholder="e.g., Tomato"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>Container</td>
+                <td>
+                  <select
+                    value={newRow.container}
+                    onChange={e => setNewRow({ ...newRow, container: e.target.value })}
+                  >
+                    {CONTAINERS.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td>Confidence</td>
+                <td>
+                  <input
+                    type="number" step="0.01" min="0" max="1"
+                    value={newRow.confidence}
+                    onChange={e => setNewRow({ ...newRow, confidence: e.target.value })}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>Coords *</td>
+                <td>
+                  <code>{newRow.coords ? JSON.stringify(newRow.coords) : "(pick on photo)"}</code>
+                  <div style={{ marginTop: 6 }}>
+                    <button type="button" onClick={onPickCoords}>Pick on photo</button>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                    Click and drag on the image to draw a rectangle. We store [x, y, w, h] in original pixels.
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>Notes</td>
+                <td>
+                  <input
+                    value={newRow.notes}
+                    onChange={e => setNewRow({ ...newRow, notes: e.target.value })}
+                    placeholder="optional notes"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+            <button type="button" onClick={onSaveNewRow}>Save to table</button>
+            <button type="button" onClick={onCancelNewRow}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       {/* Table + Save */}
       {rows.length > 0 && (
         <>
