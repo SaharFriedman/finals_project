@@ -10,24 +10,20 @@ const toOid = (v) => (v && mongoose.Types.ObjectId.isValid(v) ? new mongoose.Typ
 
 // Summarize per-plant last events
 async function getContext(userId) {
-  const plants = await Plant.find({ userId }, { label: 1, areaId: 1 }).lean();
-  const events = await Event.aggregate([
-    { $match: { userId } },
-    { $sort: { happenedAt: -1 } },
-    { $group: { _id: "$plantId", lastWater: { $first: { amount: "$amount", units: "$units", at: "$happenedAt" } } } }
-  ]);
+  const uid = toOid(userId); // make sure it is an ObjectId
 
-  const map = new Map(events.map(e => [String(e._id), e.lastWater]));
-  const ctx = plants.map(p => ({
+  const plants = await Plant.find(
+    { userId: uid },
+    { label: 1, areaId: 1, lastWateredAt: 1 } // add whatever else you need
+  ).lean();
+
+  return plants.map(p => ({
     plant_id: String(p._id),
     area_id: String(p.areaId),
     label: p.label,
-    last_water: map.get(String(p._id)) || null
+    last_water: p.lastWateredAt ? { at: p.lastWateredAt } : null
   }));
-
-  return ctx;
 }
-
 // GET /api/helper/context
 exports.getContext = async (req, res) => {
   try {
@@ -58,7 +54,8 @@ exports.chat = async (req, res) => {
     // Build a constrained prompt with instruction to return optional JSON block
     const sys = `You are My Helper - a personal garden assistant. 
 You answer using the user's private garden data. Never invent dates. 
-Avoid repeating the same advice within recent history if already given.`;
+Avoid repeating the same advice within recent history if already given. 
+`;
 
     // recent messages with a limit of 8 recent commands
     const recent = await ChatMessage.find({ userId }).sort({ createdAt: -1 }).limit(8).lean();
@@ -76,6 +73,34 @@ Avoid repeating the same advice within recent history if already given.`;
   // LLM response
     const out = await callLLM(messages);
     const text = out.text || "Sorry - no response";
+
+    // Try to parse optional EVENTS JSON
+    let saved = [];
+    const match = text.match(/```json\s*EVENTS\s*([\s\S]*?)```/i) || text.match(/EVENTS:\s*(\[.*\])/i);
+    if (match) {
+      try {
+        const payload = JSON.parse(match[1]);
+        if (Array.isArray(payload)) {
+          for (const ev of payload) {
+            const plant = ctx.find(p => String(p.plant_id) === String(ev.plant_id) || (ev.plant_label && p.label?.toLowerCase() === ev.plant_label.toLowerCase()));
+            const rec = await Event.create({
+              userId,
+              areaId: plant ? plant.area_id : (area_id ? toOid(area_id) : null),
+              plantId: plant ? toOid(plant.plant_id) : null,
+              type: ev.type || "note",
+              amount: typeof ev.amount === "number" ? ev.amount : null,
+              units: ev.units || "",
+              notes: ev.notes || "",
+              happenedAt: ev.happenedAt ? new Date(ev.happenedAt) : new Date(),
+              source: "user"
+            });
+            saved.push({ id: String(rec._id), type: rec.type });
+          }
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+    }
 
     // Store assistant turn
     await ChatMessage.create({ userId, role: "assistant", text });
