@@ -534,16 +534,15 @@ export default function PictureDetect() {
               <th>#</th>
               <th>Label</th>
               <th>Container</th>
-              <th>Confidence</th>
-              <th>Coords [px]</th>
               <th>Watered</th>
               <th>Fertilized</th>
               <th>Planted</th>
               <th>Notes</th>
+              <th>Delete</th>
             </tr>
           </thead>
           <tbody>
-            {/* Saved plants rendering */}
+            {/* Saved plants table */}
             {savedPlants.map(r => {
               const photo = savedPhotos.find(p => p.photo_id === r.photo_id);
               return (
@@ -552,13 +551,11 @@ export default function PictureDetect() {
                   <td>{r.idx}</td>
                   <td>{r.label}</td>
                   <td>{r.container}</td>
-                  <td>{typeof r.confidence === 'number' ? Math.round(r.confidence * 100) + '%' : ''}</td>
-                  <td><code>{JSON.stringify(r.coords ?? r.coordsPx)}</code></td>
                   <td>{r.lastWateredAt ? new Date(r.lastWateredAt).toLocaleString() : ''}</td>
                   <td>{r.lastFertilizedAt ? new Date(r.lastFertilizedAt).toLocaleString() : ''}</td>
                   <td>{r.plantedMonth && r.plantedYear ? `${String(r.plantedMonth).padStart(2, '0')}/${r.plantedYear}` : ''}</td>
-                  <td><button type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}> Delete</button></td>
                   <td>{r.notes || ''}</td>
+                  <td><button type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}> Delete</button></td>
                 </tr>
               );
             })}

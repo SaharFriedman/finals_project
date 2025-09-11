@@ -1,5 +1,5 @@
 // a function to render the plant table and functionality (dates logic e.g)
-export default function PlantTable({ rows, setRows}) {
+export default function PlantTable({ rows, setRows }) {
   const remove = (i) => setRows(prev => prev.filter((_, idx) => idx !== i));
   const update = (idx, patch) =>
     setRows(prev => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
@@ -18,44 +18,31 @@ export default function PlantTable({ rows, setRows}) {
       <thead>
         <tr>
           <th>#</th>
-          <th>Delete</th>
-          <th>Preview</th>
           <th>Label</th>
           <th>Container</th>
-          <th>Confidence</th>
-          <th>BBox [x1,y1,x2,y2]</th>
-          <th>Notes</th>
           <th>Watered</th>
           <th>Fertilized</th>
           <th>Planted</th>
-
+          <th>Notes</th>
+          <th>Delete</th>
         </tr>
       </thead>
       <tbody>
+        {/* plant number */} 
         {rows.map((r, i) => (
           <tr key={r.idx ?? i}>
             <td style={{ textAlign: "center", width: 40 }}>{r.idx}</td>
-            <td>
-           <button type="button" onClick={() => remove(i)}>Delete</button>
-           </td>
-            <td>
-              {r.image && (
-                <img
-                  alt="crop"
-                  src={`data:image/jpeg;base64,${r.image}`}
-                  style={{ width: 80, height: 80, objectFit: "cover" }}
-                />
-              )}
-            </td>
+            {/* label */}
             <td>
               <input value={r.label || ""} onChange={e => update(i, { label: e.target.value })} />
             </td>
+            {/* container */}
             <td>
               <select
                 value={r.container || "unknown"}
                 onChange={e => update(i, { container: e.target.value })}
               >
-              {/* replace underscore with " " for raised_garden for example*/}
+                {/* replace underscore with " " for raised_garden for example*/}
                 {["unknown", "pot", "raised_bed", "ground"].map(opt => (
                   <option key={opt} value={opt}>
                     {opt.replace(/_/g, " ")}
@@ -63,11 +50,7 @@ export default function PlantTable({ rows, setRows}) {
                 ))}
               </select>
             </td>
-            <td>{r.confidence != null ? (r.confidence * 100).toFixed(0) + "%" : ""}</td>
-            <td><code>{JSON.stringify(r.coords)}</code></td>
-            <td>
-              <input value={r.notes || ""} onChange={e => update(i, { notes: e.target.value })} />
-            </td>
+            {/* last watered at */}
             <td>
               <input
                 type="date"
@@ -80,6 +63,7 @@ export default function PlantTable({ rows, setRows}) {
                 }}
               />
             </td>
+            {/* last fertilized at */}
             <td>
               <input
                 type="date"
@@ -92,7 +76,8 @@ export default function PlantTable({ rows, setRows}) {
                 }}
               />
             </td>
-           <td>
+            {/* last planted at */}
+            <td>
               <input
                 type="month"
                 max={monthMax}
@@ -109,6 +94,14 @@ export default function PlantTable({ rows, setRows}) {
                   update(i, { plantedYear: Number(yy), plantedMonth: Number(mm) });
                 }}
               />
+            </td>
+            {/* notes */}
+            <td>
+              <input value={r.notes || ""} onChange={e => update(i, { notes: e.target.value })} />
+            </td>
+            {/* delete */}
+            <td>
+              <button type="button" onClick={() => remove(i)}>Delete</button>
             </td>
           </tr>
         ))}
