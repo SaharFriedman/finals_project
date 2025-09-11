@@ -107,7 +107,9 @@ exports.renameArea = async (req, res) => {
   }
 };
 
-
+/**
+ * POST /api/gardenRoutes/photos
+ */
 exports.createPhoto = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "photo file is required" });
@@ -173,7 +175,9 @@ exports.createPhoto = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 };
-
+/**
+ * POST /api/gardenRoutes/plants
+ */
 exports.bulkUpsertPlants = async (req, res) => {
   try {
     const userId = toOid(req.userId);
@@ -229,10 +233,10 @@ exports.bulkUpsertPlants = async (req, res) => {
               confidence: typeof r.confidence === "number" ? r.confidence : 0,
               notes: r.notes || "",
               updatedAt: new Date(),
-              lastWateredAt:    r.lastWateredAt ? new Date(r.lastWateredAt) : null,
+              lastWateredAt: r.lastWateredAt ? new Date(r.lastWateredAt) : null,
               lastFertilizedAt: r.lastFertilizedAt ? new Date(r.lastFertilizedAt) : null,
-              plantedMonth:     r.plantedMonth != null ? Number(r.plantedMonth) : null,
-              plantedYear:      r.plantedYear  != null ? Number(r.plantedYear)  : null,
+              plantedMonth: r.plantedMonth != null ? Number(r.plantedMonth) : null,
+              plantedYear: r.plantedYear != null ? Number(r.plantedYear) : null,
             },
           },
           upsert: true,
@@ -259,8 +263,21 @@ exports.bulkUpsertPlants = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 };
-
-
+// DELETE /api/gardenRoutes/plants/:id
+exports.deletePlant = async (req, res) => {
+  try {
+    const userId = toOid(req.userId);
+    const plantId = toOid(req.params.id);
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    if (!plantId) return res.status(400).json({ error: 'plant_id invalid' });
+    const deleted = await Plant.findOneAndDelete({ _id: plantId, userId });
+    if (!deleted) return res.status(404).json({ error: 'not_found' });
+    return res.json({ ok: true, plant_id: plantId.toString() });
+  } catch (err) {
+    console.error('deletePlant error:', err);
+    res.status(500).json({ error: 'internal_error' });
+  }
+};
 exports.listAreaPhotos = async (req, res) => {
   try {
     const userId = toOid(req.userId);

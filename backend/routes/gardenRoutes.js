@@ -27,6 +27,7 @@ const upload = multer({
 router.post("/photos", upload.single("photo"), ctrl.createPhoto);
 
 router.post("/plants", ctrl.bulkUpsertPlants);
+router.delete("/plants/:id", ctrl.deletePlant);
 
 // ---- Areas ----
 router.get("/areas", ctrl.listAreas);            // ?user_id=<oid>

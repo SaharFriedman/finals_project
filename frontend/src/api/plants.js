@@ -11,7 +11,6 @@ export async function bulkUpsertPlants(rows) {
   if (!resp.ok) throw new Error(`bulkUpsertPlants failed: ${resp.status}`);
   return resp.json();
 }
-
 // getting all of the plants by areaID
 export async function listAreaPlants(areaId) {
   const resp = await fetch(`${API_BASE}/areas/${areaId}/plants`, {
@@ -19,4 +18,13 @@ export async function listAreaPlants(areaId) {
   });
   if (!resp.ok) throw new Error(`listAreaPlants failed: ${resp.status}`);
   return resp.json();
+}
+// deleting all of the plants
+export async function deletePlant(plantId) {
+const resp = await fetch(`http://localhost:12345/api/plants/${plantId}`, {
+method: 'DELETE',
+headers: authHeaders(),
+});
+if (!resp.ok) throw new Error(`deletePlant failed: ${resp.status}`);
+return resp.json();
 }
