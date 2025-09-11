@@ -47,24 +47,6 @@ export default function PictureDetect() {
   const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
 
   /*this is all the functions required to activate a new plant and bbox picker for it*/
-
-  function startAddForPhoto(photo) {
-    const maxIdx = Math.max(
-      0,
-      ...savedPlants.filter(sp => sp.photo_id === photo.photo_id).map(sp => sp.idx || 0)
-    );
-    setSavedNew({
-      photo,
-      idx: maxIdx + 1,
-      label: "",
-      container: "unknown",
-      coords: null, // set by picker
-      confidence: 0.99,
-      notes: "",
-    });
-    setPickerSavedOpen(true);
-  }
-
   // next idx inside the current rows table
   const nextIdx = useMemo(() => {
     const maxInRows = rows.reduce((m, r) => Math.max(m, Number(r.idx || 0)), 0);
@@ -603,23 +585,62 @@ export default function PictureDetect() {
       </div>
       {/* Manual box picker overlay over the same photo */}
       {pickerOpen && imgURL && (
-        <div style={{ position: "relative", display: "inline-block", marginTop: 8 }}>
-          <img
-            ref={imgPickRef}
-            src={imgURL}
-            alt=""
-            style={{ maxWidth: 720, width: "100%", height: "auto", display: "block", border: "1px solid #ddd" }}
-          />
-          <BBoxPicker
-            imgRef={imgPickRef}
-            onConfirm={onCoordsPicked}
-            onCancel={() => setPickerOpen(false)}
-          />
-        </div>
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.45)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+      padding: 16,
+    }}
+    onClick={() => setPickerOpen(false)} // click backdrop to close
+  >
+    <div
+      style={{
+        position: "relative",
+        background: "#fff",
+        borderRadius: 8,
+        padding: 12,
+        maxWidth: "90vw",
+        maxHeight: "90vh",
+        overflow: "auto",
+      }}
+      onClick={(e) => e.stopPropagation()} // do not close when clicking inside
+    >
+      <div style={{ fontSize: 14, marginBottom: 8 }}>
+        Pick box - current uploaded photo
+      </div>
 
+      <div style={{ position: "relative", display: "inline-block" }}>
+        <img
+          ref={imgPickRef}
+          src={imgURL}
+          alt=""
+          style={{
+            display: "block",
+            maxWidth: "80vw",
+            maxHeight: "70vh",
+            width: "100%",
+            height: "auto",
+            border: "1px solid #eee",
+          }}
+        />
+        <BBoxPicker
+          imgRef={imgPickRef}
+          onConfirm={onCoordsPicked}     // you already convert xywh -> xyxy inside this
+          onCancel={() => setPickerOpen(false)}
+        />
+      </div>
 
-      )}
-
+      <div style={{ marginTop: 10, textAlign: "right" }}>
+        <button onClick={() => setPickerOpen(false)}>Close</button>
+      </div>
+    </div>
+  </div>
+)}
       {newRow && (
         <div style={{ marginTop: 12, padding: 12, border: "1px solid #ddd", maxWidth: 820 }}>
           <h3>Add a new plant</h3>
