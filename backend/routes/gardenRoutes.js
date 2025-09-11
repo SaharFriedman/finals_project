@@ -25,7 +25,7 @@ const upload = multer({
 });
 
 router.post("/photos", upload.single("photo"), ctrl.createPhoto);
-
+router.delete("/photos/:id",ctrl.deletePhoto);
 router.post("/plants", ctrl.bulkUpsertPlants);
 router.delete("/plants/:id", ctrl.deletePlant);
 
@@ -33,6 +33,7 @@ router.delete("/plants/:id", ctrl.deletePlant);
 router.get("/areas", ctrl.listAreas);            // ?user_id=<oid>
 router.post("/areas", ctrl.createArea);          // { user_id, name? } -> auto "Area N" if no name
 router.patch("/areas/:id", ctrl.renameArea);     // { user_id, name }
+router.delete("/areas/:id", ctrl.deleteArea);
 
 // ---- Photos ----
 router.get("/areas/:id/photos", ctrl.listAreaPhotos);

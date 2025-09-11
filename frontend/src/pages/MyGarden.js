@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import DetectionOverlay from "../components/DetectionOverlay";
 import PlantTable from "../components/PlantTable";
-import { savePhotoFile, listAreaPhotos } from "../api/photos";
-import { listAreas, createArea, renameArea } from "../api/areas";
+import { savePhotoFile, listAreaPhotos,deletePhoto } from "../api/photos";
+import { listAreas, createArea, renameArea,deleteArea } from "../api/areas";
 import { listAreaPlants, deletePlant } from "../api/plants";
 import SignOutButton from "../components/SignOutButton";
 import { useMemo, useRef } from "react";
@@ -139,6 +139,8 @@ export default function PictureDetect() {
       }
     })();
   }, [selectedAreaId]);// do it whenever the selectedAreaId is changed(by the toggle bar)
+
+
   // this function handles an addition of a new area
   async function onAddArea() {
     try {
@@ -156,6 +158,41 @@ export default function PictureDetect() {
       alert("Failed to create area");
     }
   }
+  // this function handles a deletion of a new area
+async function onDeleteArea() {
+  if (!selectedAreaId) return;
+
+  try {
+    // delete photos and plants by selectedArea
+    const [photos, plants] = await Promise.all([
+      listAreaPhotos(selectedAreaId).catch(() => []),
+      listAreaPlants(selectedAreaId).catch(() => []),
+    ]);
+
+    // delete plants
+    await Promise.allSettled(plants.map(p => deletePlant(p.plant_id)));
+
+    // delete photos
+    await Promise.allSettled(photos.map(ph => deletePhoto(ph.photo_id)));
+
+    // finally delete the area itself
+    await deleteArea(selectedAreaId); 
+    // update UI state
+    const remaining = areas.filter(a => a.area_id !== selectedAreaId);
+    setAreas(remaining);
+    setSelectedAreaId(remaining[0]?.area_id || "");
+    setSavedPhotos([]);
+    setSavedPlants([]);
+    setRows([]);
+    setFile(null);
+    setImgURL("");
+    setPhotoMeta(null);
+  } catch (e) {
+    console.error(e);
+    alert(e.message || "Delete area failed");
+  }
+}
+
   // handle subbmision for a new area name to a selected area
   async function onRenameArea() {
     if (!selectedAreaId) return;
@@ -334,6 +371,7 @@ export default function PictureDetect() {
         </select>
         <button onClick={onAddArea}>+ Add Area</button>
         <button onClick={onRenameArea} disabled={!selectedAreaId}>Rename</button>
+        <button onClick={onDeleteArea} disabled={!selectedAreaId}>Delete</button>
       </div>
 
       {/* Saved photos for this area with overlays */}
