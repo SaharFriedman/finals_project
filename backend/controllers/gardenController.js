@@ -6,7 +6,7 @@ const { imageSize } = require("image-size");
 const Area = require("../models/area");
 const Photo = require("../models/photos");
 const Plant = require("../models/plant");
-
+const deleter = require("../middleware/deleter")
 const toOid = (v) =>
   (v && mongoose.Types.ObjectId.isValid(v) ? new mongoose.Types.ObjectId(v) : null);
 
@@ -196,8 +196,10 @@ exports.createPhoto = async (req, res) => {
  */
 exports.deletePhoto = async (req, res) => {
   try{
-    console.log("hhhhhhhhhhhhh");
     const photoID = toOid(req.params.id);
+    const photoObj = await Photo.findOne({ _id: photoID });
+    const fileDeletion = await deleter.deleteFiles([photoObj.fileName]);
+    if(!fileDeletion) return res.status(404).json({ error: 'not_found' });
     const deleted = await Photo.deleteOne({ _id: photoID });
     if (!deleted) return res.status(404).json({ error: 'not_found' });
     return res.json({ ok: true, photoID: photoID.toString() });
@@ -206,20 +208,7 @@ exports.deletePhoto = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 }
-// /**
-//  * DELETE /api/gardenRoutes/areas/:id
-//  */
-// exports.deleteArea = async (req, res) => {
-//   try {
-//     const id = toOid(req.params.id);
-//     const deleted = await Area.deleteOne({ _id: id });
-//     if (!deleted) return res.status(404).json({ error: 'not_found' });
-//     return res.json({ ok: true, areaID: id.toString() });
-//   }
-//   catch (e) {
-//     res.status(500).json({ error: "internal_error" });
-//   }
-// }
+
 
 /**
  * POST /api/gardenRoutes/plants
