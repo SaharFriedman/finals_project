@@ -27,3 +27,11 @@ export async function renameArea(areaId, name) {
   if (!res.ok) throw new Error('renameArea failed');
   return res.json();
 }
+export async function deleteArea(areaId){
+  const res = await fetch(`${API_BASE}/areas/${areaId}`,{
+    method: 'DELETE',
+    headers:{ 'Content-Type': 'application/json', ...authHeaders() },
+  });
+  if(!res.ok) throw new Error('deleteArea failed');
+  return res.json();
+}

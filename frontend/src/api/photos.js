@@ -25,3 +25,13 @@ export async function listAreaPhotos(areaId) {
   if (!resp.ok) throw new Error(`listAreaPhotos failed: ${resp.status}`);
   return resp.json();
 }
+
+// deleting a photo by ID
+export async function deletePhoto(photoId) {
+  const resp = await fetch(`${API_BASE}/photos/${photoId}`, {
+    method:'DELETE',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`DeletePhotos failed: ${resp.status}`);
+  return resp.json();
+}

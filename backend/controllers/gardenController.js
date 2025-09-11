@@ -106,6 +106,22 @@ exports.renameArea = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 };
+/**
+ * DELETE /api/gardenRoutes/areas/:id
+ */
+exports.deleteArea = async (req, res) => {
+  try {
+    const id = toOid(req.params.id);
+    const deleted = await Area.deleteOne({ _id: id });
+    if (!deleted) return res.status(404).json({ error: 'not_found' });
+    return res.json({ ok: true, areaID: id.toString() });
+  }
+  catch (e) {
+    res.status(500).json({ error: "internal_error" });
+  }
+}
+
+
 
 /**
  * POST /api/gardenRoutes/photos
@@ -175,6 +191,36 @@ exports.createPhoto = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 };
+/**
+ * DELETE /api/photos/:id
+ */
+exports.deletePhoto = async (req, res) => {
+  try{
+    console.log("hhhhhhhhhhhhh");
+    const photoID = toOid(req.params.id);
+    const deleted = await Photo.deleteOne({ _id: photoID });
+    if (!deleted) return res.status(404).json({ error: 'not_found' });
+    return res.json({ ok: true, photoID: photoID.toString() });
+  }
+  catch (e) {
+    res.status(500).json({ error: "internal_error" });
+  }
+}
+// /**
+//  * DELETE /api/gardenRoutes/areas/:id
+//  */
+// exports.deleteArea = async (req, res) => {
+//   try {
+//     const id = toOid(req.params.id);
+//     const deleted = await Area.deleteOne({ _id: id });
+//     if (!deleted) return res.status(404).json({ error: 'not_found' });
+//     return res.json({ ok: true, areaID: id.toString() });
+//   }
+//   catch (e) {
+//     res.status(500).json({ error: "internal_error" });
+//   }
+// }
+
 /**
  * POST /api/gardenRoutes/plants
  */

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import DetectionOverlay from "../components/DetectionOverlay";
 import PlantTable from "../components/PlantTable";
-import { savePhotoFile, listAreaPhotos } from "../api/photos";
-import { listAreas, createArea, renameArea } from "../api/areas";
+import { savePhotoFile, listAreaPhotos,deletePhoto } from "../api/photos";
+import { listAreas, createArea, renameArea,deleteArea } from "../api/areas";
 import { listAreaPlants, deletePlant } from "../api/plants";
 import SignOutButton from "../components/SignOutButton";
 import { useMemo, useRef } from "react";
@@ -45,7 +45,8 @@ export default function PictureDetect() {
   const [photoMeta, setPhotoMeta] = useState(null);
 
   const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
-  /**************************** this is th helpers for adding a new plant***************************************************/
+
+  /*this is all the functions required to activate a new plant and bbox picker for it*/
   // next idx inside the current rows table
   const nextIdx = useMemo(() => {
     const maxInRows = rows.reduce((m, r) => Math.max(m, Number(r.idx || 0)), 0);
@@ -54,6 +55,7 @@ export default function PictureDetect() {
 
   function onAddNewPlant() {
     if (!file || !imgURL) {
+      // need to refactor
       alert("Choose a photo first.");
       return;
     }
@@ -61,8 +63,8 @@ export default function PictureDetect() {
       idx: nextIdx,
       label: "",
       container: "unknown",
-      coords: null,              // will be set by picker
-      confidence: 0.99,
+      coords: null,              // will be set by bbox picker
+      confidence: 1,
       notes: "",
       lastWateredAt: null,
       lastFertilizedAt: null,
@@ -137,6 +139,8 @@ export default function PictureDetect() {
       }
     })();
   }, [selectedAreaId]);// do it whenever the selectedAreaId is changed(by the toggle bar)
+
+
   // this function handles an addition of a new area
   async function onAddArea() {
     try {
@@ -154,6 +158,41 @@ export default function PictureDetect() {
       alert("Failed to create area");
     }
   }
+  // this function handles a deletion of a new area
+async function onDeleteArea() {
+  if (!selectedAreaId) return;
+
+  try {
+    // delete photos and plants by selectedArea
+    const [photos, plants] = await Promise.all([
+      listAreaPhotos(selectedAreaId).catch(() => []),
+      listAreaPlants(selectedAreaId).catch(() => []),
+    ]);
+
+    // delete plants
+    await Promise.allSettled(plants.map(p => deletePlant(p.plant_id)));
+
+    // delete photos
+    await Promise.allSettled(photos.map(ph => deletePhoto(ph.photo_id)));
+
+    // finally delete the area itself
+    await deleteArea(selectedAreaId); 
+    // update UI state
+    const remaining = areas.filter(a => a.area_id !== selectedAreaId);
+    setAreas(remaining);
+    setSelectedAreaId(remaining[0]?.area_id || "");
+    setSavedPhotos([]);
+    setSavedPlants([]);
+    setRows([]);
+    setFile(null);
+    setImgURL("");
+    setPhotoMeta(null);
+  } catch (e) {
+    console.error(e);
+    alert(e.message || "Delete area failed");
+  }
+}
+
   // handle subbmision for a new area name to a selected area
   async function onRenameArea() {
     if (!selectedAreaId) return;
@@ -332,6 +371,7 @@ export default function PictureDetect() {
         </select>
         <button onClick={onAddArea}>+ Add Area</button>
         <button onClick={onRenameArea} disabled={!selectedAreaId}>Rename</button>
+        <button onClick={onDeleteArea} disabled={!selectedAreaId}>Delete</button>
       </div>
 
       {/* Saved photos for this area with overlays */}
@@ -370,27 +410,64 @@ export default function PictureDetect() {
               >
                 Add plant
               </button>
-              {/* extra plain image only used for the picker overlay */}
-              <div style={{ position: "relative" }}>
-                <img
-                  ref={savedNew?.photo?.photo_id === p.photo_id ? savedImgRef : null}
-                  src={`http://localhost:12345${p.photo_url}`}
-                  alt=""
-                  style={{ maxWidth: 480, width: "100%", height: "auto", display: "block", border: "1px solid #eee", marginTop: 6 }}
-                />
-                {pickerSavedOpen && savedNew?.photo?.photo_id === p.photo_id && (
-                  <BBoxPicker
-                    imgRef={savedImgRef}
-                    onConfirm={(coordsPx) => {
-                      // picker returns [x,y,w,h] - store as [x1,y1,x2,y2]
-                      const xyxy = xywhToXyxy(coordsPx);
-                      setSavedNew(prev => ({ ...prev, coords: xyxy }));
-                      setPickerSavedOpen(false);
+              {/* Global picker modal for adding to any saved photo */}
+              {pickerSavedOpen && savedNew?.photo && (
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    background: "rgba(0,0,0,0.45)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 9999,
+                    padding: 16,
+                  }}
+                  onClick={() => setPickerSavedOpen(false)} // click backdrop closes
+                >
+                  <div
+                    style={{
+                      position: "relative",
+                      background: "#fff",
+                      borderRadius: 8,
+                      padding: 12,
+                      maxWidth: "90vw",
+                      maxHeight: "90vh",
+                      overflow: "auto",
                     }}
-                    onCancel={() => setPickerSavedOpen(false)}
-                  />
-                )}
-              </div>
+                    onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
+                  >
+                    <div style={{ fontSize: 14, marginBottom: 8 }}>
+                      Pick box - photo slot {savedNew.photo.slot}
+                    </div>
+
+                    <div style={{ position: "relative", display: "inline-block" }}>
+                      <img
+                        ref={savedImgRef}
+                        src={`http://localhost:12345${savedNew.photo.photo_url}`}
+                        alt=""
+                        style={{ display: "block", maxWidth: "80vw", maxHeight: "70vh", width: "100%", height: "auto", border: "1px solid #eee" }}
+                      />
+                      <BBoxPicker
+                        imgRef={savedImgRef}
+                        onConfirm={(coordsPx) => {
+                          // picker returns [x,y,w,h] - convert to [x1,y1,x2,y2] to match your overlay/storage
+                          const [x, y, w, h] = coordsPx.map(Number);
+                          const xyxy = [x, y, x + Math.max(1, w), y + Math.max(1, h)];
+                          setSavedNew(prev => ({ ...prev, coords: xyxy }));
+                          setPickerSavedOpen(false);
+                        }}
+                        onCancel={() => setPickerSavedOpen(false)}
+                      />
+                    </div>
+
+                    <div style={{ marginTop: 10, textAlign: "right" }}>
+                      <button onClick={() => setPickerSavedOpen(false)}>Close</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {savedNew?.photo?.photo_id === p.photo_id && (
                 <div style={{ marginTop: 8, padding: 8, border: "1px solid #ddd", borderRadius: 6 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}>
@@ -495,16 +572,15 @@ export default function PictureDetect() {
               <th>#</th>
               <th>Label</th>
               <th>Container</th>
-              <th>Confidence</th>
-              <th>Coords [px]</th>
               <th>Watered</th>
               <th>Fertilized</th>
               <th>Planted</th>
               <th>Notes</th>
+              <th>Delete</th>
             </tr>
           </thead>
           <tbody>
-            {/* Saved plants rendering */}
+            {/* Saved plants table */}
             {savedPlants.map(r => {
               const photo = savedPhotos.find(p => p.photo_id === r.photo_id);
               return (
@@ -513,13 +589,11 @@ export default function PictureDetect() {
                   <td>{r.idx}</td>
                   <td>{r.label}</td>
                   <td>{r.container}</td>
-                  <td>{typeof r.confidence === 'number' ? Math.round(r.confidence * 100) + '%' : ''}</td>
-                  <td><code>{JSON.stringify(r.coords ?? r.coordsPx)}</code></td>
                   <td>{r.lastWateredAt ? new Date(r.lastWateredAt).toLocaleString() : ''}</td>
                   <td>{r.lastFertilizedAt ? new Date(r.lastFertilizedAt).toLocaleString() : ''}</td>
                   <td>{r.plantedMonth && r.plantedYear ? `${String(r.plantedMonth).padStart(2, '0')}/${r.plantedYear}` : ''}</td>
-                  <td><button type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}> Delete</button></td>
                   <td>{r.notes || ''}</td>
+                  <td><button type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}> Delete</button></td>
                 </tr>
               );
             })}
@@ -546,23 +620,62 @@ export default function PictureDetect() {
       </div>
       {/* Manual box picker overlay over the same photo */}
       {pickerOpen && imgURL && (
-        <div style={{ position: "relative", display: "inline-block", marginTop: 8 }}>
-          <img
-            ref={imgPickRef}
-            src={imgURL}
-            alt=""
-            style={{ maxWidth: 720, width: "100%", height: "auto", display: "block", border: "1px solid #ddd" }}
-          />
-          <BBoxPicker
-            imgRef={imgPickRef}
-            onConfirm={onCoordsPicked}
-            onCancel={() => setPickerOpen(false)}
-          />
-        </div>
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.45)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+      padding: 16,
+    }}
+    onClick={() => setPickerOpen(false)} // click backdrop to close
+  >
+    <div
+      style={{
+        position: "relative",
+        background: "#fff",
+        borderRadius: 8,
+        padding: 12,
+        maxWidth: "90vw",
+        maxHeight: "90vh",
+        overflow: "auto",
+      }}
+      onClick={(e) => e.stopPropagation()} // do not close when clicking inside
+    >
+      <div style={{ fontSize: 14, marginBottom: 8 }}>
+        Pick box - current uploaded photo
+      </div>
 
+      <div style={{ position: "relative", display: "inline-block" }}>
+        <img
+          ref={imgPickRef}
+          src={imgURL}
+          alt=""
+          style={{
+            display: "block",
+            maxWidth: "80vw",
+            maxHeight: "70vh",
+            width: "100%",
+            height: "auto",
+            border: "1px solid #eee",
+          }}
+        />
+        <BBoxPicker
+          imgRef={imgPickRef}
+          onConfirm={onCoordsPicked}     // you already convert xywh -> xyxy inside this
+          onCancel={() => setPickerOpen(false)}
+        />
+      </div>
 
-      )}
-
+      <div style={{ marginTop: 10, textAlign: "right" }}>
+        <button onClick={() => setPickerOpen(false)}>Close</button>
+      </div>
+    </div>
+  </div>
+)}
       {newRow && (
         <div style={{ marginTop: 12, padding: 12, border: "1px solid #ddd", maxWidth: 820 }}>
           <h3>Add a new plant</h3>
