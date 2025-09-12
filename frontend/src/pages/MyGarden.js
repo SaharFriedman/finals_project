@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import DetectionOverlay from "../components/DetectionOverlay";
 import PlantTable from "../components/PlantTable";
-import { savePhotoFile, listAreaPhotos,deletePhoto } from "../api/photos";
-import { listAreas, createArea, renameArea,deleteArea } from "../api/areas";
+import { savePhotoFile, listAreaPhotos, deletePhoto } from "../api/photos";
+import { listAreas, createArea, renameArea, deleteArea } from "../api/areas";
 import { listAreaPlants, deletePlant } from "../api/plants";
 import SignOutButton from "../components/SignOutButton";
 import { useMemo, useRef } from "react";
@@ -25,7 +25,23 @@ export default function PictureDetect() {
   const [newRow, setNewRow] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const imgPickRef = useRef(null);
+  const fileInputRef = useRef(null);
 
+  function resetUploadState() {
+    // revoke old blob url
+    if (imgURL) URL.revokeObjectURL(imgURL);
+    setImgURL("");
+    setNatural({ width: 0, height: 0 });
+    setFile(null);
+    setRows([]);
+    setNewRow(null);
+    setPickerOpen(false);
+    setPickerSavedOpen(false);
+    setSavedNew(null);
+    setPhotoMeta(null);
+    // clear the actual file input so same-file selection will trigger onChange
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
   // changing the name of the list to work with several methods of the API w.o relaying on the server 
   function normalizeAreas(list) {
     return (list || [])//map the list with area name and id
@@ -121,24 +137,48 @@ export default function PictureDetect() {
   }, []);
   // this useEffect is handling photo and plants data
   useEffect(() => {
-    if (!selectedAreaId) {
-      setSavedPhotos([]);
-      setSavedPlants([]);
-      return;
-    }
+    // clear previous area’s UI immediately
+    setSavedNew(null);
+    setPickerSavedOpen(false);
+    setPickerOpen(false);
+    setNewRow(null);
+    setRows([]);
+    setPhotoMeta(null);
+
+    // revoke old object URL and clear file/image
+    setFile(null);
+    setNatural({ width: 0, height: 0 });
+    if (imgURL) URL.revokeObjectURL(imgURL);
+    setImgURL("");
+
+    // empty lists until the new fetch completes
+    resetUploadState();
+    setSavedPhotos([]);
+    setSavedPlants([]);
+
+    if (!selectedAreaId) return;
+
+    let alive = true; // guard against race conditions
+
     (async () => {
       try {
         const [photos, plants] = await Promise.all([
           listAreaPhotos(selectedAreaId),
           listAreaPlants(selectedAreaId),
         ]);
+        if (!alive) return; // ignore late responses from a previous area
         setSavedPhotos(photos);
         setSavedPlants(plants);
       } catch (e) {
+        if (!alive) return;
         console.error("load saved for area failed", e);
       }
     })();
-  }, [selectedAreaId]);// do it whenever the selectedAreaId is changed(by the toggle bar)
+
+    return () => { alive = false; }; // cancel this run on area change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAreaId]);
+
 
 
   // this function handles an addition of a new area
@@ -159,39 +199,40 @@ export default function PictureDetect() {
     }
   }
   // this function handles a deletion of a new area
-async function onDeleteArea() {
-  if (!selectedAreaId) return;
+  async function onDeleteArea() {
+    if (!selectedAreaId) return;
 
-  try {
-    // delete photos and plants by selectedArea
-    const [photos, plants] = await Promise.all([
-      listAreaPhotos(selectedAreaId).catch(() => []),
-      listAreaPlants(selectedAreaId).catch(() => []),
-    ]);
+    try {
+      // delete photos and plants by selectedArea
+      const [photos, plants] = await Promise.all([
+        listAreaPhotos(selectedAreaId).catch(() => []),
+        listAreaPlants(selectedAreaId).catch(() => []),
+      ]);
 
-    // delete plants
-    await Promise.allSettled(plants.map(p => deletePlant(p.plant_id)));
+      // delete plants
+      await Promise.allSettled(plants.map(p => deletePlant(p.plant_id)));
 
-    // delete photos
-    await Promise.allSettled(photos.map(ph => deletePhoto(ph.photo_id)));
+      // delete photos
+      await Promise.allSettled(photos.map(ph => deletePhoto(ph.photo_id)));
 
-    // finally delete the area itself
-    await deleteArea(selectedAreaId); 
-    // update UI state
-    const remaining = areas.filter(a => a.area_id !== selectedAreaId);
-    setAreas(remaining);
-    setSelectedAreaId(remaining[0]?.area_id || "");
-    setSavedPhotos([]);
-    setSavedPlants([]);
-    setRows([]);
-    setFile(null);
-    setImgURL("");
-    setPhotoMeta(null);
-  } catch (e) {
-    console.error(e);
-    alert(e.message || "Delete area failed");
+      // finally delete the area itself
+      await deleteArea(selectedAreaId);
+      // update UI state
+      const remaining = areas.filter(a => a.area_id !== selectedAreaId);
+      setAreas(remaining);
+      setSelectedAreaId(remaining[0]?.area_id || "");
+      setSavedPhotos([]);
+      resetUploadState();
+      setSavedPlants([]);
+      setRows([]);
+      setFile(null);
+      setImgURL("");
+      setPhotoMeta(null);
+    } catch (e) {
+      console.error(e);
+      alert(e.message || "Delete area failed");
+    }
   }
-}
 
   // handle subbmision for a new area name to a selected area
   async function onRenameArea() {
@@ -217,15 +258,21 @@ async function onDeleteArea() {
   const handleFileChange = (e) => {
     const f = e.target.files?.[0] || null;
     if (!f) return;
+
+    if (imgURL) URL.revokeObjectURL(imgURL); // revoke old blob
+
     setFile(f);
     const url = URL.createObjectURL(f);
     setImgURL(url);
+
     const probe = new Image();
     probe.onload = () => setNatural({ width: probe.naturalWidth, height: probe.naturalHeight });
     probe.src = url;
+
     setRows([]);
     setPhotoMeta(null);
-  }
+  };
+
   // handling to delete post saved plants
   async function handleDeleteSavedPlant(plantId) {
     try {
@@ -602,80 +649,89 @@ async function onDeleteArea() {
       )}
 
       {/* File + detect */}
-      <input type="file" accept="image/*" onChange={handleFileChange} />
-      <button onClick={runDetect} disabled={!file} style={{ marginLeft: 8 }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onClick={e => { e.currentTarget.value = ""; }}   // lets you pick the same file again
+        onChange={handleFileChange}
+      />      <button onClick={runDetect} disabled={!file} style={{ marginLeft: 8 }}>
         Detect
       </button>
       <button onClick={onAddNewPlant} disabled={!file} style={{ marginLeft: 8 }}>
         Add new plant
       </button>
       {/* Image + overlay */}
-      <div style={{ marginTop: 12 }}>
-        <DetectionOverlay
-          src={imgURL}
-          natural={natural}
-          detections={rows}
-          maxWidth={720}
-        />
-      </div>
+      {imgURL ? (
+        <div style={{ marginTop: 12 }}>
+          <DetectionOverlay
+            key={imgURL}                 // force remount on new image
+            src={imgURL}
+            natural={natural}
+            detections={rows}
+            maxWidth={720}
+          />
+        </div>
+      ) : null}
+
       {/* Manual box picker overlay over the same photo */}
       {pickerOpen && imgURL && (
-  <div
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.45)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 9999,
-      padding: 16,
-    }}
-    onClick={() => setPickerOpen(false)} // click backdrop to close
-  >
-    <div
-      style={{
-        position: "relative",
-        background: "#fff",
-        borderRadius: 8,
-        padding: 12,
-        maxWidth: "90vw",
-        maxHeight: "90vh",
-        overflow: "auto",
-      }}
-      onClick={(e) => e.stopPropagation()} // do not close when clicking inside
-    >
-      <div style={{ fontSize: 14, marginBottom: 8 }}>
-        Pick box - current uploaded photo
-      </div>
-
-      <div style={{ position: "relative", display: "inline-block" }}>
-        <img
-          ref={imgPickRef}
-          src={imgURL}
-          alt=""
+        <div
           style={{
-            display: "block",
-            maxWidth: "80vw",
-            maxHeight: "70vh",
-            width: "100%",
-            height: "auto",
-            border: "1px solid #eee",
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 16,
           }}
-        />
-        <BBoxPicker
-          imgRef={imgPickRef}
-          onConfirm={onCoordsPicked}     // you already convert xywh -> xyxy inside this
-          onCancel={() => setPickerOpen(false)}
-        />
-      </div>
+          onClick={() => setPickerOpen(false)} // click backdrop to close
+        >
+          <div
+            style={{
+              position: "relative",
+              background: "#fff",
+              borderRadius: 8,
+              padding: 12,
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              overflow: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()} // do not close when clicking inside
+          >
+            <div style={{ fontSize: 14, marginBottom: 8 }}>
+              Pick box - current uploaded photo
+            </div>
 
-      <div style={{ marginTop: 10, textAlign: "right" }}>
-        <button onClick={() => setPickerOpen(false)}>Close</button>
-      </div>
-    </div>
-  </div>
-)}
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <img
+                ref={imgPickRef}
+                src={imgURL}
+                alt=""
+                style={{
+                  display: "block",
+                  maxWidth: "80vw",
+                  maxHeight: "70vh",
+                  width: "100%",
+                  height: "auto",
+                  border: "1px solid #eee",
+                }}
+              />
+              <BBoxPicker
+                imgRef={imgPickRef}
+                onConfirm={onCoordsPicked}     // you already convert xywh -> xyxy inside this
+                onCancel={() => setPickerOpen(false)}
+              />
+            </div>
+
+            <div style={{ marginTop: 10, textAlign: "right" }}>
+              <button onClick={() => setPickerOpen(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
       {newRow && (
         <div style={{ marginTop: 12, padding: 12, border: "1px solid #ddd", maxWidth: 820 }}>
           <h3>Add a new plant</h3>
