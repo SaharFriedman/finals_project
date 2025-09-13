@@ -8,6 +8,20 @@ export async function getHelperContext() {
   return res.json();
 }
 
+// this method is posting the data to recieve a daily tip from the LLM
+export async function postTip({ system, developer, user, area_id }) {
+  const res = await fetch(`${API_BASE}/chat/tip`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ system, developer, user, area_id }),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`postTip failed: ${res.status} ${txt}`);
+  }
+  return res.json();
+}
+
 export async function postChat(message) {
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
@@ -17,7 +31,6 @@ export async function postChat(message) {
   if (!res.ok) throw new Error("helper chat failed");
   return res.json();
 }
-
 export async function logEvent(ev) {
   const res = await fetch(`${API_BASE}/events`, {
     method: "POST",

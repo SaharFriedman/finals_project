@@ -111,7 +111,42 @@ Avoid repeating the same advice within recent history if already given.
     res.status(500).json({ error: "internal_error" });
   }
 };
+/////////////////////////////////////////////////
 
+exports.tip = async (req, res) => {
+  try {
+    const userId = toOid(req.userId);
+    if (!userId) return res.status(401).json({ error: "unauthorized" });
+
+    // accept exactly these fields from the frontend
+    const { system, developer, user, area_id } = req.body || {};
+    if (!system || !developer || !user) {
+      return res.status(400).json({ error: "system, developer, and user are required" });
+    }
+
+    // small size caps
+    const sys = String(system).slice(0, 6000);
+    const dev = String(developer).slice(0, 12000);
+    const usr = String(user).slice(0, 60000);
+
+    const messages = [
+      { role: "system",    content: sys },
+      { role: "developer", content: dev },
+      { role: "user",      content: usr }
+    ];
+
+    const out = await callLLM(messages);     // { text }
+    return res.json(out); // return tip object, not the raw text
+  } catch (err) {
+    console.error("tip route error:", err);
+    return res.status(500).json({ error: "tip failed", details: err.message || String(err) });
+  }
+};
+
+
+
+
+///////////////////////////////////////////////
 // POST /api/helper/events - simple logger
 exports.createEvent = async (req, res) => {
   try {

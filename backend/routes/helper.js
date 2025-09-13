@@ -5,6 +5,7 @@ const ctrl = require("../controllers/helperController");
 // All routes expect req.userId to be set by your auth middleware
 router.get("/context", ctrl.getContext);
 router.post("/chat", ctrl.chat);
+router.post("/chat/tip",ctrl.tip);
 router.post("/events", ctrl.createEvent);
 router.get("/events", ctrl.listEvents);
 
