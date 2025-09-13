@@ -19,7 +19,7 @@ export default function PictureDetect() {
   const [areas, setAreas] = useState([]);
   // to find which area the user is currently looking at
   const [selectedAreaId, setSelectedAreaId] = useState("");
-  const [savedNew, setSavedNew] = useState(null);      // { photo, idx, label, container, coords, ... }
+  const [savedNew, setSavedNew] = useState(null);
   const [pickerSavedOpen, setPickerSavedOpen] = useState(false);
   const savedImgRef = useRef(null);
   const [newRow, setNewRow] = useState(null);
@@ -309,6 +309,7 @@ export default function PictureDetect() {
     setRows(arr.map((d, i) => ({
       idx: i + 1,
       label: d.label || "Plant",
+      species_label: d.species_label || "unknown",
       confidence: typeof d.confidence === "number" ? d.confidence : null,
       coords: d.coords,
       container: d.container ?? "unknown",
@@ -342,6 +343,7 @@ export default function PictureDetect() {
         idx: r.idx,
         label: r.label || "Plant",
         container: r.container || "unknown",
+        species_label: r.species_label || "unknown",
         coordsPx: r.coords,
         confidence: typeof r.confidence === "number" ? r.confidence : 0,
         lastWateredAt: r.lastWateredAt || null,
@@ -615,6 +617,7 @@ export default function PictureDetect() {
         <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
           <thead>
             <tr>
+              <th>Species</th>
               <th>Photo slot</th>
               <th>#</th>
               <th>Label</th>
@@ -632,6 +635,7 @@ export default function PictureDetect() {
               const photo = savedPhotos.find(p => p.photo_id === r.photo_id);
               return (
                 <tr key={r.plant_id}>
+                  <td>{r.species_label || ''}</td>
                   <td>{photo ? photo.slot : ''}</td>
                   <td>{r.idx}</td>
                   <td>{r.label}</td>

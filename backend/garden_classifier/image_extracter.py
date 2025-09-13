@@ -12,15 +12,17 @@ import weatherAPI as WAPI
 
 # model configuration
 MODEL_PATH = "my_model.pt"
+SPECIFIC_MODEL = "specific_plant_model.pt"
 model = YOLO(MODEL_PATH, task='detect')
+scnd_model = YOLO(SPECIFIC_MODEL,task='detect')
 
-PLANT_CLASSES_N     = {"plant", "flower", "tree"}  # add "tree" if your model has it
+PLANT_CLASSES_N     = {"plant", "flower", "tree","cactus"}
 CONTAINER_CLASSES_N = {"pot", "raised_bed", "garden_bed", "grass"}
 
-PLANT_MIN_CONF = 0.60           # plants only
+PLANT_MIN_CONF = 0.60           
 MIN_IOU        = 0.05            # allow small overlaps for big beds
 PRED_CONF_KEEP_ALL = 0.001       # keep everything from model; we filter plants ourselves
-
+SCND_MIN_CONF = 0.75
 def encode_b64(img):
     ok, buf = cv2.imencode(".jpg", img)
     return base64.b64encode(buf).decode("utf-8") if ok else ""
@@ -45,7 +47,7 @@ def norm_label(lbl: str) -> str:
     """lowercase + unify separators + simple synonyms"""
     s = (lbl or "").strip().lower().replace(" ", "_").replace("-", "_")
     synonyms = {
-        "potted_plant": "plant",   # or "pot" if your model uses it for the container class
+        "potted_plant": "plant",
         "plant_pot":    "pot",
         "raised-bed":   "raised_bed",
         "garden-bed":   "garden_bed",
@@ -53,7 +55,11 @@ def norm_label(lbl: str) -> str:
         "lawn":         "grass",
     }
     return synonyms.get(s, s)
-
+RAW_SCND_CLASSES = [
+    "Basil", "Geranium", "Jasmine",  
+    "Lavender", "Lemon", "Olive", "Orange", "Parsley", "Peppermint"
+]
+SCND_CLASSES_N = { norm_label(x) for x in RAW_SCND_CLASSES }
 def canonical_container(lbl_n: str) -> str:
     """emit the 4 UI values you want to use everywhere"""
     if lbl_n in {"garden_bed", "grass"}:
@@ -95,8 +101,6 @@ def predict():
             # no confidence filter for containers
             containers.append(rec)
 
-        # else: ignore other classes
-
     out = []
     for p in plants:
         best, best_iou = None, 0.0
@@ -106,23 +110,59 @@ def predict():
                 best, best_iou = c, score
 
         if best and best_iou >= MIN_IOU:
-            container       = canonical_container(best["label_n"])  # pot / raised_bed / ground
+            container = canonical_container(best["label_n"])  # pot / raised_bed / ground
             container_score = best_iou
         else:
             container, container_score = "unknown", 0.0
 
         x1,y1,x2,y2 = p["coords"]
         crop = img[y1:y2, x1:x2]
+        
+        lbl_n = p.get("label_n") or norm_label(p.get("label", ""))
+
+        if lbl_n == "cactus":
+    # skip the species model and hard-set species as cactus
+            species_raw, species_n, species_conf = "Cactus", "cactus", 1.0  # or 0.0 if you prefer
+        else:
+            species_raw, species_n, species_conf = identify_species(crop)
+        out_label = species_raw or p["label_raw"]
         out.append({
-            "label": p["label_raw"],            # keep original plant label for display
+            # primary plant detection
+            "label": out_label,
             "confidence": p["confidence"],
             "coords": p["coords"],
             "image": encode_b64(crop),
             "container": container,
-            "container_score": container_score
+            "container_score": container_score,
+            # secondary species classification
+            "species_label": species_raw,
+            "species_label_n": species_n,
+            "species_confidence": species_conf
         })
 
     return jsonify(out)
+def identify_species(crop_bgr: np.ndarray):
+    if scnd_model is None or crop_bgr is None or crop_bgr.size == 0:
+        return None, None, 0.0
+
+    # predict on the crop
+    res = scnd_model.predict(crop_bgr, conf=SCND_MIN_CONF, verbose=False)[0]
+    names = res.names
+    best = None
+    best_conf = -1.0
+    for xyxy, cls, conf in zip(res.boxes.xyxy.tolist(),
+                               res.boxes.cls.tolist(),
+                               res.boxes.conf.tolist()):
+        raw = names[int(cls)]
+        n   = norm_label(raw)
+        if n in SCND_CLASSES_N:
+            c = float(conf)
+            if c > best_conf:
+                best = (raw, n, c)
+                best_conf = c
+    if best is None:
+        return None, None, 0.0
+    return best
 
 @app.route("/weather", methods=["POST"])
 def weather():
