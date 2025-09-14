@@ -4,6 +4,7 @@ const Plant = require("../models/plant");
 const Photo = require("../models/photos");
 const Event = require("../models/event");
 const ChatMessage = require("../models/chat");
+const TipMessage = require("../models/tip")
 const { callLLM } = require("../services/llm");
 
 const toOid = (v) => (v && mongoose.Types.ObjectId.isValid(v) ? new mongoose.Types.ObjectId(v) : null);
@@ -111,19 +112,24 @@ Avoid repeating the same advice within recent history if already given.
     res.status(500).json({ error: "internal_error" });
   }
 };
-/////////////////////////////////////////////////
 
+// POST /api/helper/chat/tip
+// this function post the tip to the LLM
 exports.tip = async (req, res) => {
   try {
     const userId = toOid(req.userId);
     if (!userId) return res.status(401).json({ error: "unauthorized" });
 
     // accept exactly these fields from the frontend
-    const { system, developer, user, area_id } = req.body || {};
+    const { system, developer, user } = req.body || {};
     if (!system || !developer || !user) {
       return res.status(400).json({ error: "system, developer, and user are required" });
     }
 
+       // recent messages with a limit of 8 recent commands
+    const recent = await TipMessage.find({ userId }).sort({ createdAt: -1 }).limit(8).lean();
+    // provide role and content
+    const history = recent.reverse().map(m => ({ role: m.role, content: m.text }));
     // small size caps
     const sys = String(system).slice(0, 6000);
     const dev = String(developer).slice(0, 12000);
@@ -132,21 +138,20 @@ exports.tip = async (req, res) => {
     const messages = [
       { role: "system",    content: sys },
       { role: "developer", content: dev },
+      ...history,
       { role: "user",      content: usr }
     ];
 
-    const out = await callLLM(messages);     // { text }
-    return res.json(out); // return tip object, not the raw text
+    const out = await callLLM(messages); 
+    const text = out.text;
+    await TipMessage.create({ userId, text });
+    return res.json(out); 
   } catch (err) {
-    console.error("tip route error:", err);
     return res.status(500).json({ error: "tip failed", details: err.message || String(err) });
   }
 };
 
 
-
-
-///////////////////////////////////////////////
 // POST /api/helper/events - simple logger
 exports.createEvent = async (req, res) => {
   try {

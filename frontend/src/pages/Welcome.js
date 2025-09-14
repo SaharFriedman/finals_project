@@ -65,62 +65,6 @@ function buildLocationBlock({ latitude, longitude, tz, isoDate }) {
   };
 }
 
-// checking the result of the weather forecast (google can change the output name)
-function normalizeWeather(result) {
-  if (!result) return null;
-  // if result is already an array of day objects, accept it
-  if (Array.isArray(result)) return result;
-  if (result.daily_sun_data) return result.daily_sun_data;
-  if (result.daily) return result.daily;
-  if (result.forecast) return result.forecast;
-  if (result.weather) return result.weather;
-  return null;
-}
-function numOrNull(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-function computeWeatherFeatures(normalized) {
-  // tolerate array-or-object "normalized" with today/tomorrow or [0]/[1]
-  const today = normalized?.today ?? normalized?.[0] ?? null;
-  const tomorrow = normalized?.tomorrow ?? normalized?.[1] ?? null;
-  const pick = (o) => (o && typeof o === "object" ? o : {});
-
-  const tmax = numOrNull(
-    pick(tomorrow).t_max_c ?? pick(tomorrow).max_temp_c ??
-    pick(today).t_max_c ?? pick(today).max_temp_c
-  );
-
-  const tmin = numOrNull(
-    pick(tomorrow).t_min_c ?? pick(tomorrow).min_temp_c ??
-    pick(today).t_min_c ?? pick(today).min_temp_c
-  );
-
-  const rain = numOrNull(
-    pick(tomorrow).rain_mm ?? pick(tomorrow).precip_mm ??
-    pick(today).rain_mm ?? pick(today).precip_mm
-  );
-
-  const uv = numOrNull(pick(tomorrow).uv_index ?? pick(today).uv_index);
-
-  const wind = numOrNull(
-    pick(tomorrow).wind_kph ?? pick(today).wind_kph ??
-    pick(tomorrow).wind_gust_kph ?? pick(today).wind_gust_kph
-  );
-
-  return {
-    tmax_c: tmax,
-    tmin_c: tmin,
-    rain_next_24h_mm: rain,
-    uv_index: uv,
-    wind_kph: wind,
-    heat_flag: Number.isFinite(tmax) ? tmax >= 32 : false,
-    frost_flag: Number.isFinite(tmin) ? tmin <= 2 : false,
-    wind_gusty_flag: Number.isFinite(wind) ? wind >= 35 : false,
-    uv_high_flag: Number.isFinite(uv) ? uv >= 8 : false,
-  };
-}
 function computeWeatherFeaturesFromSummary(summary) {
   if (!summary?.available) {
     return {
@@ -171,21 +115,6 @@ function compactPlants(plants) {
     area_id: p.area_id,
     area_name: p.area_name
   }));
-}
-function buildLLMUserPayload({ tz, isoDate, coords, weatherRaw, plantsByArea, flatPlants }) {
-  const location_block = buildLocationBlock({ latitude: coords.latitude, longitude: coords.longitude, tz, isoDate });
-  const summary = deriveDailyFromHourly(weatherRaw, isoDate);          // tiny
-  const weather_features = computeWeatherFeaturesFromSummary(summary); // tiny
-  const plants = compactPlants(flatPlants);                            // tiny
-
-  return stripNullsDeep({
-    user_timezone: tz,
-    calendar_today: isoDate,
-    location_block,
-    weather_summary: summary,
-    weather_features,
-    plants
-  });
 }
 
 // verifying plantDoc name until finalized project
