@@ -5,6 +5,7 @@ import { postTip } from "../api/helper";
 import TopBar from "../art/components/topbar.js";
 import DailyTip from "../art/components/dailyTip.js";
 import Background from "../art/components/Background.js";
+import SlideShow from "../art/components/SlidesShow.js";
 import "../art/components/components.css"
 
 const API_BASE = "http://localhost:12345/api";
@@ -469,17 +470,125 @@ const Welcome = () => {
       setLoading(false);
     }
   }
-
+const slides = [
+  {
+    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+    text: "Explore the garden",
+    ref: "/garden"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+    text: "Watering tips",
+    ref: "/tips/watering"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+    text: "Fertilizing guide",
+    ref: "/tips/fertilizing"
+  },  {
+    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+    text: "Explore the garden",
+    ref: "/garden"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+    text: "Watering tips",
+    ref: "/tips/watering"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+    text: "Fertilizing guide",
+    ref: "/tips/fertilizing"
+  },  {
+    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+    text: "Explore the garden",
+    ref: "/garden"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+    text: "Watering tips",
+    ref: "/tips/watering"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+    text: "Fertilizing guide",
+    ref: "/tips/fertilizing"
+  },  {
+    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+    text: "Explore the garden",
+    ref: "/garden"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+    text: "Watering tips",
+    ref: "/tips/watering"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+    text: "Fertilizing guide",
+    ref: "/tips/fertilizing"
+  },  {
+    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+    text: "Explore the garden",
+    ref: "/garden"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+    text: "Watering tips",
+    ref: "/tips/watering"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+    text: "Fertilizing guide",
+    ref: "/tips/fertilizing"
+  },  {
+    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+    text: "Explore the garden",
+    ref: "/garden"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+    text: "Watering tips",
+    ref: "/tips/watering"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+    text: "Fertilizing guide",
+    ref: "/tips/fertilizing"
+  },  {
+    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+    text: "Explore the garden",
+    ref: "/garden"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+    text: "Watering tips",
+    ref: "/tips/watering"
+  },
+  {
+    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+    text: "Fertilizing guide",
+    ref: "/tips/fertilizing"
+  }
+];
 
 
   return (
-    <div style={{  overflowX: "hidden", overflowY: "auto" }}>
+    <>
       <Background/>
+    <div style={{  overflowX: "hidden", overflowY: "auto" , position:"sticky"}}>
     <div >
-      <TopBar />
-      <DailyTip/>
-     {/* <SlidesShow/> */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+      <TopBar/>
+      <DailyTip 
+        header="Thin seedlings" 
+        subheader="Struggling = Too many seedlings too close together crowd each other out and compete for 
+                        sunlight and nutrients. None of them grow well."
+        content="Thriving = Each seedling has enough room. Seedlings grow quickly and get established. 
+                      After planting seeds, thin them early and often. Young seedlings will grow and thrive 
+                      when given enough room. Check mature spacing guidelines and square foot spacing in this blog post. "  
+      />
+     <SlideShow slidesComponents={slides} title="Recommended for you"/>
+      {/* <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <button
           className="my-garden-button"
           type="button"
@@ -497,7 +606,7 @@ const Welcome = () => {
           {loading ? "Working..." : "Get garden care plan"}
         </button>
 
-      </div>
+      </div> */}
 
       {location && (
         <p style={{ marginTop: 8 }}>
@@ -513,7 +622,7 @@ const Welcome = () => {
         </p>
       )}
       {/* debug need to remove */}
-      <div style={{ marginTop: 12 }}>
+      {/* <div style={{ marginTop: 12 }}>
         <button type="button" onClick={() => setShowDebug(s => !s)}>
           {showDebug ? "Hide debug" : "Show debug"}
         </button>
@@ -549,7 +658,7 @@ const Welcome = () => {
           </details>
 
         </div>
-      )}
+      )} */}
       {/* Preview of what we sent for plants_by_area */}
       {snapshot.areas.length > 0 && (
         <div style={{ marginTop: 16 }}>
@@ -586,6 +695,6 @@ const Welcome = () => {
         </div>
       )}
   </div>    
-</div>);
+</div></>);
 }
 export default Welcome;

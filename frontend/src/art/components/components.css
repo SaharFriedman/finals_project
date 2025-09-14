@@ -1,26 +1,38 @@
+.contentContainer{
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    height: 80vh;
+}
+/* ------------------- Form button ------------------- */
 .FormButton{
-    background-color: rgba(255, 255, 255, 0.329);
+    background-color:transparent;
     color:  white;
     font-size: 4vh;
     text-shadow: 1px 1px 1px black, 1px 1px 3px black;
     aspect-ratio: 5/2;
-    height: 10vh;
+    height: 8vh;
     border-radius: 6px;
-    border-width: 0.1px;
-    border-color: rgba(255, 255, 255, 0.5);
+    border: none;
     font-family: sans-serif;
     transition: all ease 0.3s;
 }
 .FormButton:hover{
     transform:scale(1.1) ;
 }
+
+/* ------------------- Top Bar ------------------- */
 .TopBar{
+    margin-top: 3vh;
     width: 90%;
-    height: 15vh;
+    height: 10vh;
     background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 5px;
+    border-radius: 15px;
     border-width: 1px;
-    border-color: white;
+    border-color: rgba(255, 255, 255, 0.5);
     color: white;
     border-style: solid;
     align-items: center;
@@ -28,53 +40,17 @@
     display: flex;
 }
 .Logo{
-    height: 15vh;
+    height: 12vh;
     aspect-ratio: 1;
     color: white;
 }
-.dailyTip{
-    display:flex;
-    justify-content: center;
-}
-.floatingDailyTipDiv{
-    display:flex;
-    align-items: flex-start;
-    width: 50vw;
-    padding: 4px;
-    background-color: rgba(19, 122, 54, 0.493);
-    border-width: 1px;
-    border-style: solid;
-    border-color:  rgba(45, 141, 16, 0.493);
-    border-radius: 10px;
-    box-shadow: 1px 1px 10px black;
-    color: black;
-    font-size: 0.75rem;
-}
-.dailyTipImg{
-    width: 100vw;
-    height: 100vh;
-    position: relative;
-}
 
-.dailyTipOverlay{
-    position: absolute;
-    display: flex;
-    text-align: start;
-    padding-left: 10px;
-    justify-content: start;
-    
-}
-.dailyTipText{
-    justify-content: start;
-    align-items: start;
-    display: flex;
-    flex-direction: column;
-    width: 800px;
-    font-size: 1.5rem;
-    text-shadow: 1px 1px 1px black, 1px 1px 2px black,  1px 1px 3px black;
-}
+/* ------------------- Background ------------------- */
 .background-video-container{
-
+  position: fixed;
+  inset: 0;                /* top:0 right:0 bottom:0 left:0 */
+  z-index: 0;              /* behind content */
+  pointer-events: none; 
 }
 .background-video-container video{
     position: absolute;
@@ -83,6 +59,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    background-size: cover;
     transform: translate(-50%, -50%);
     z-index: -101;
 }
@@ -95,7 +72,7 @@
     height: 100%;
     background: linear-gradient(
         rgba(255, 255, 255, 0.15),
-        rgba(0, 0, 0, 0.5)
+        rgba(134, 173, 108, 0.5)
     ); /* Subtle gradient effect */
     pointer-events: none; /* Allows interaction with elements above */
     backdrop-filter: blur(5px); /* Subtle blur effect */
@@ -103,4 +80,179 @@
     opacity: 1;
     transition: all 0.3s ease;
     z-index: -99; /* Ensures overlay is above video but behind content */
+}
+
+/* ------------------- DailyTip ------------------- */
+.dailyTipContainer img{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
+  object-position: center;
+  
+  border-radius: 10px;
+  
+}
+.dailyTipContainer{
+    border-radius: 10px;
+    padding:0px;
+    margin:0px;
+}
+.dailyTipBackgroundContainer{
+    position: relative;
+    overflow: hidden;
+    height: 70vh;
+    aspect-ratio: 7/3;
+    padding:0px;
+    margin:0px;
+}
+.dailyTipOverlayContainer{
+    position: absolute;
+    object-fit: cover;
+    color: white;
+    background: linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0));
+    width: 100%;
+    height:100%;
+    padding: 0px;
+    margin: 0px;
+    
+}
+.dailyTipHeaderContainer{
+    color: wheat;
+    font-size: 7vh;
+    display: flex;
+    padding-left: 1rem;
+    text-shadow: 1px 1px 1px black, 1px 1px 3px black, 1px 1px 5px black, 1px 1px 7px black;
+    margin-bottom: 3%;
+    margin-top: 2%;
+}
+.dailyTipSubheaderContainer{
+    font-size: 4.5vh;
+    display: flex;
+    text-align: left;
+    padding-left: 3%;
+    padding-right: 5%;
+    text-shadow: 1px 1px 1px black, 1px 1px 3px black, 1px 1px 5px black, 1px 1px 7px black;
+    margin-bottom: 1%;
+}
+.dailyTipContentContainer{
+    font-size: 3.5vh;
+    max-width: 80%;
+    display: flex;
+    text-align: left;
+    padding-left: 3%;
+    text-shadow: 1px 1px 1px black, 1px 1px 3px black, 1px 1px 5px black, 1px 1px 7px black; 
+}
+/* -------------------------- Slide show ---------------------------------------------- */
+.nf-carousel {
+  position: relative;
+  width: 99%;
+  padding: 0 3rem;              /* room for arrow buttons */
+  box-sizing: border-box;
+}
+
+.nf-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 6vh;
+  font-weight: 600;
+  color: #fff;                  /* tweak for your theme */
+}
+
+.nf-rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(250px, 50vw, 400px); /* responsive card width */
+  gap: 0.9rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding-bottom: 0.5rem;       /* avoid shadow clipping */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* hide default scrollbar while keeping scrollability */
+.nf-rail::-webkit-scrollbar { height: 0; }
+.nf-rail { scrollbar-width: none; }
+
+.nf-card {
+  position: relative;
+  aspect-ratio: 2/3;         /* poster aspect ratio */
+  border-radius: 12px;
+  overflow: hidden;
+  background: #111;
+  scroll-snap-align: start;
+  text-decoration: none;
+  color: inherit;
+  transform: translateZ(0);     /* smoother transforms */
+}
+
+.nf-card img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nf-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0));
+  opacity: 0.9;
+  transition: opacity 160ms ease;
+  pointer-events: none;
+}
+
+.nf-caption {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 5vh;
+  font-size: 4vh;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.5);
+}
+
+/* hover focus effects */
+.nf-card:hover .nf-overlay,
+.nf-card:focus .nf-overlay { opacity: 0.65; }
+
+.nf-card:hover { transform: scale(1.03); }
+.nf-card { transition: transform 160ms ease; }
+
+/* nav buttons */
+.nf-nav {
+  margin-left:  5px;
+  margin-right: 5px;
+  padding-top:  100px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 56px;
+  width: 44px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-size: 2rem;
+  line-height: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+
+.nf-nav-left { left: 0.5rem; }
+.nf-nav-right { right: 0.5rem; }
+
+/* small screens: tighter spacing, smaller arrows */
+@media (max-width: 640px) {
+  .nf-carousel { padding: 0 2.25rem; }
+  .nf-nav { height: 44px; width: 36px; font-size: 1.6rem; }
 }
