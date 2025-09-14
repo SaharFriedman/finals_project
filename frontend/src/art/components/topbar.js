@@ -1,6 +1,7 @@
 import "./components.css";
 import "../components/buttons.js"   
 import SignOutButton from "../../components/SignOutButton.js";
+import { ReactComponent as Logo } from "../assets/LOGO_svg.svg";
 const TopBar = () =>(
     <div style={{
         width: "100vw",
@@ -11,15 +12,11 @@ const TopBar = () =>(
         paddingBottom: "10px" // corrected from paddingDown
     }}>
         <div className="TopBar">
-            <div style={{width:"60%", alignItems: "center", justifyContent: "center", gap: "7px", display: "flex"}}>
-                <img
-                    style={{ width: "45px", height: "45px"}}
-                    src={require("../assets/tahat.png")}
-                    alt="Logo"
-                />
+            <div style={{width:"60%", alignItems: "center", justifyContent: "center", gap: "12px", display: "flex"}}>
+                <Logo className="Logo"/>
                 <SignOutButton />
                 <SignOutButton />
-                                <SignOutButton />
+                <SignOutButton />
             </div>
             <div style={{width: "10%"}}></div>
             <div style={{width: "30%"}}>

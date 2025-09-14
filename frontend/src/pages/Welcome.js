@@ -3,6 +3,7 @@ import { useState } from "react";
 import { authHeaders } from "../api/http";
 import { postTip } from "../api/helper";
 import TopBar from "../art/components/topbar.js";
+import DailyTip from "../art/components/dailyTip.js";
 import Background from "../art/components/Background.js";
 import "../art/components/components.css"
 
@@ -476,7 +477,7 @@ const Welcome = () => {
       <Background/>
     <div >
       <TopBar />
-     {/* <DailyTip/> */}
+      <DailyTip/>
      {/* <SlidesShow/> */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <button
