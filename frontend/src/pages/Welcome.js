@@ -1,7 +1,10 @@
 import SignOutButton from "../components/SignOutButton";
 import { useState } from "react";
 import { authHeaders } from "../api/http";
-import { postTip } from "../api/helper"
+import { postTip } from "../api/helper";
+import TopBar from "../art/components/topbar.js";
+import Background from "../art/components/Background.js";
+import "../art/components/components.css"
 
 const API_BASE = "http://localhost:12345/api";
 // this is the welcome page, it consists some information about the user and recommendations for it
@@ -469,10 +472,12 @@ const Welcome = () => {
 
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: 16 }}>
-      <h2>WelcomePage</h2>
-      <h3>Welcome to the best website ever</h3>
-
+    <div style={{  overflowX: "hidden", overflowY: "auto" }}>
+      <Background/>
+    <div >
+      <TopBar />
+     {/* <DailyTip/> */}
+     {/* <SlidesShow/> */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <button
           className="my-garden-button"
@@ -491,7 +496,6 @@ const Welcome = () => {
           {loading ? "Working..." : "Get garden care plan"}
         </button>
 
-        <SignOutButton />
       </div>
 
       {location && (
@@ -580,6 +584,7 @@ const Welcome = () => {
           ))}
         </div>
       )}
-    </div>);
+  </div>    
+</div>);
 }
 export default Welcome;

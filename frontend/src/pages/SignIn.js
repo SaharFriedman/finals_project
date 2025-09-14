@@ -33,7 +33,7 @@ function SignIn() {
   };
 
   return (
-    <div>
+    <div style={{backgroundColor :"black"}}>
       <h2>sign in page</h2>
       <div>
         <button

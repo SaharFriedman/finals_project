@@ -1,3 +1,13 @@
 .App {
   text-align: center;
 }
+#root{
+  width: 100vw;
+  overflow-x: hidden;
+}
+body{
+  width: 100vw;
+  height: 100vh;
+  margin: 0px;
+  padding: 0px;
+}
