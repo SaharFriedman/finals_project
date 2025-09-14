@@ -1,36 +1,127 @@
 import SignOutButton from "../components/SignOutButton";
 import { useState } from "react";
-import axios from "axios";
 import { authHeaders } from "../api/http";
-import OPENAI_KEY from "../../src/components/apitok"
+import { postTip } from "../api/helper"
+
 const API_BASE = "http://localhost:12345/api";
 // this is the welcome page, it consists some information about the user and recommendations for it
+const systemMessage = `
+You are Garden Daily Tip Engine. Produce one concise, high-value tip using only the provided input. Always obey the Output schema exactly and return strict JSON only.
+`.trim();
+
+const developerMessage = `
+Hard constraints
+- Use only the values in location_block, weather_features, weather_summary, and plants. If a field is null or missing, treat it as unknown.
+- Do not infer climate or seasons beyond what location_block gives you.
+- Never mention frost unless weather_features.frost_flag === true.
+- Never mention heatwave unless weather_features.heat_flag === true.
+- Never recommend watering if weather_features.rain_next_24h_mm >= 3.
+- If weather_summary.available === false, avoid weather-based advice and use seasonality only if provided via location_block.
+
+Decision rules (priority high to low)
+A) Imminent weather impact on tasks - only if *_flag is true or numeric thresholds appear.
+B) Plant-stage windows by month - use location_block.hemisphere and calendar_today to infer season if provided there.
+C) Care schedule due now or overdue (watering, fertilizing, pruning, staking, pest checks).
+D) General best practice fallback.
+
+Style and output
+- One tip only. 40-80 words. One actionable step. No lists. No emojis.
+- Mention specific plants when relevant (common name only). Prefer concrete amounts or thresholds when available.
+- Avoid hedging and repetition. No marketing language.
+
+Output schema
+Return strict JSON only:
+{
+  "title": "string, ≤ 60 chars",
+  "message": "string, 40-80 words",
+  "category": "weather|watering|fertilizing|pruning|pests|harvest|planting|general",
+  "topic_tag": "kebab-case short tag, used for dedupe",
+  "plant_ids": ["optional array of plant_id strings"],
+  "novelty_reason": "why this is new vs last 10",
+  "source_data_refs": ["like weather_features.tmin_c", "plants.<name>.<field>"],
+  "next_review_date": "YYYY-MM-DD"
+}
+`.trim();
 
 
 
 /** ====================== Utilities ====================== */
-// checking the result of the weather forecast (google can change the output name)
-function normalizeWeather(result) {
-  if (!result) return null;
-  if (result.daily_sun_data) return result.daily_sun_data;
-  if (result.daily) return result.daily;
-  if (result.forecast) return result.forecast;
-  if (result.weather) return result.weather;
-  return null;
+function buildLocationBlock({ latitude, longitude, tz, isoDate }) {
+  const month = Number(isoDate.slice(5, 7));
+  const hemisphere = latitude >= 0 ? "northern" : "southern";
+  // A simple, explicit mapping for season - no guesswork beyond hemisphere+month
+  const seasonByHemisphere = {
+    northern: ["winter", "winter", "spring", "spring", "spring", "summer", "summer", "summer", "autumn", "autumn", "autumn", "winter"],
+    southern: ["summer", "summer", "autumn", "autumn", "autumn", "winter", "winter", "winter", "spring", "spring", "spring", "summer"],
+  };
+  const season = seasonByHemisphere[hemisphere][month - 1];
+  return {
+    latitude: Number(latitude.toFixed(4)),
+    longitude: Number(longitude.toFixed(4)),
+    timezone: tz,
+    hemisphere,
+    month,
+    season
+  };
+}
+
+function computeWeatherFeaturesFromSummary(summary) {
+  if (!summary?.available) {
+    return {
+      tmax_c: null, tmin_c: null, rain_next_24h_mm: null,
+      uv_index: null, wind_kph: null,
+      heat_flag: false, frost_flag: false, wind_gusty_flag: false, uv_high_flag: false
+    };
+  }
+  const tmax = summary.tomorrow?.t_max_c ?? summary.today?.t_max_c ?? null;
+  const tmin = summary.tomorrow?.t_min_c ?? summary.today?.t_min_c ?? null;
+  const rain24 = summary.tomorrow?.rain_mm ?? null;
+  return {
+    tmax_c: tmax,
+    tmin_c: tmin,
+    rain_next_24h_mm: rain24,
+    uv_index: null,
+    wind_kph: null,
+    heat_flag: Number.isFinite(tmax) ? tmax >= 32 : false,
+    frost_flag: Number.isFinite(tmin) ? tmin <= 2 : false,
+    wind_gusty_flag: false,
+    uv_high_flag: false
+  };
+}
+function stripNullsDeep(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(stripNullsDeep).filter(v => v !== undefined);
+  }
+  if (obj && typeof obj === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) {
+      const vv = stripNullsDeep(v);
+      if (vv !== undefined && vv !== null && vv !== "") out[k] = vv;
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+  return obj === null ? undefined : obj;
+}
+
+function compactPlants(plants) {
+  return plants.map(p => ({
+    plant_id: p.plant_id,
+    plant_label: p.plant_label,
+    species: p.species ?? undefined,
+    container: p.container,
+    planted_month: p.planted_month ?? undefined,
+    last_watered_at: p.last_watered_at ?? undefined,
+    last_fertilized_at: p.last_fertilized_at ?? undefined,
+    area_id: p.area_id,
+    area_name: p.area_name
+  }));
 }
 
 // verifying plantDoc name until finalized project
 function normalizePlantDoc(d) {
-  // label
   const label =
-    d?.label ??
-    d?.plant_label ??
-    d?.name ??
-    d?.commonName ??
-    d?.species ??
-    "Plant";
+    d?.label ?? d?.plant_label ?? d?.name ?? d?.commonName ?? d?.species ?? "Plant";
 
-  // try several coord shapes: coords, coordsPx, coords_px, bounding_box, x1..y2 until finished project
   const arr =
     toFour(d?.coords) ||
     toFour(d?.coordsPx) ||
@@ -47,8 +138,21 @@ function normalizePlantDoc(d) {
     bbox = d.bounding_box.trim();
   }
 
-  return { plant_label: String(label), bounding_box: String(bbox) };
+  return {
+    plant_id: d?.plant_id || d?._id || d?.id || null,
+    plant_label: String(label),
+    species: d?.species || d?.scientificName || null,
+    container: d?.container || "unknown",
+    confidence: d?.confidence ?? d?.score ?? null,
+    bounding_box: String(bbox),
+    coords_px: arr,
+    planted_month: d?.planted_month ?? d?.plantedMonth ?? null,
+    last_watered_at: d?.last_watered_at ?? d?.lastWateredAt ?? null,
+    last_fertilized_at: d?.last_fertilized_at ?? d?.lastFertilizedAt ?? null,
+    notes: d?.notes || ""
+  };
 }
+
 
 // Coerce various inputs into [x1,y1,x2,y2]
 function toFour(src) {
@@ -66,7 +170,7 @@ function toFour(src) {
 
   if (typeof src === "object") {
     // numeric keys or explicit x1..y2 keys
-    const byIndex = ["0","1","2","3"].map(k => src[k]);
+    const byIndex = ["0", "1", "2", "3"].map(k => src[k]);
     if (byIndex.every(v => v !== undefined)) {
       const vals = byIndex.map(Number);
       return vals.length === 4 && vals.every(Number.isFinite) ? vals : null;
@@ -78,7 +182,6 @@ function toFour(src) {
   return null;
 }
 
-
 // taking the text and extract only the JSON
 function extractJsonFromText(text) {
   if (!text || typeof text !== "string") return null;
@@ -88,7 +191,7 @@ function extractJsonFromText(text) {
   let s = fence ? fence[1].trim() : text.trim();
 
   // Try a straight parse first
-  try { return JSON.parse(s); } catch {}
+  try { return JSON.parse(s); } catch { }
 
   // If there is an object, extract the first balanced {...}
   const objStart = s.indexOf("{");
@@ -122,7 +225,7 @@ function extractJsonFromText(text) {
   }
   if (end !== -1) {
     const candidate = s.slice(start, end);
-    try { return JSON.parse(candidate); } catch {}
+    try { return JSON.parse(candidate); } catch { }
   }
 
   // As a last resort, walk left from the last '}' or ']'
@@ -130,9 +233,54 @@ function extractJsonFromText(text) {
   const lastClose = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
   for (let i = lastClose; i >= start && i >= 0; i--) {
     const slice = s.slice(start, i + 1);
-    try { return JSON.parse(slice); } catch {}
+    try { return JSON.parse(slice); } catch { }
   }
   return null;
+}
+
+
+function round1(n) { return Number.isFinite(n) ? Math.round(n * 10) / 10 : null; }
+
+function deriveDailyFromHourly(weatherRaw, tzNowIso) {
+  if (!weatherRaw?.hourly?.time || !weatherRaw.hourly.temperature_2m) {
+    return { available: false };
+  }
+  // Map each hourly record into local day buckets for today and tomorrow
+  const times = weatherRaw.hourly.time;
+  const temps = weatherRaw.hourly.temperature_2m;
+  const precip = weatherRaw.hourly.precipitation || [];
+  const now = new Date(tzNowIso);
+  const todayYMD = tzNowIso.slice(0, 10);
+  const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
+  const tomorrowYMD = tomorrow.toISOString().slice(0, 10);
+
+  const buckets = { [todayYMD]: [], [tomorrowYMD]: [] };
+
+  for (let i = 0; i < times.length; i++) {
+    const ymd = times[i].slice(0, 10);
+    if (buckets[ymd]) {
+      buckets[ymd].push({
+        t: temps[i],
+        r: precip[i] ?? 0
+      });
+    }
+  }
+
+  function summarize(hours) {
+    if (!hours || hours.length === 0) return null;
+    const tmin = Math.min(...hours.map(h => h.t));
+    const tmax = Math.max(...hours.map(h => h.t));
+    const rsum = hours.reduce((a, h) => a + (Number(h.r) || 0), 0);
+    return { t_min_c: round1(tmin), t_max_c: round1(tmax), rain_mm: round1(rsum) };
+  }
+
+  const today = summarize(buckets[todayYMD]);
+  const tomorrowS = summarize(buckets[tomorrowYMD]);
+  return {
+    available: Boolean(today || tomorrowS),
+    today: today ? { date: todayYMD, ...today } : null,
+    tomorrow: tomorrowS ? { date: tomorrowYMD, ...tomorrowS } : null
+  };
 }
 
 /** ====================== API wrappers ====================== */
@@ -186,57 +334,46 @@ function flattenPlants(plantsByArea) {
 
 /** ====================== LLM call ====================== */
 
-async function callOpenAI(jsonInput) {
-  const apiKey = OPENAI_KEY;
-
-  const systemMessage = `
-You are a smart gardening assistant. Based on the weather forecast, sunlight data, and the user's garden layout, generate care instructions.
-
-Input fields you may receive:
-- weather: array of daily objects (for example, date, sunrise, sunset, daylight_duration,amount of rain)
-- plants_by_area: array of { area_id, area_name, plants: [{ plant_label, bounding_box }] }
-- location: { latitude: number, longitude: number }
-
-If weather data is unavailable or marked {"unavailable": true}, infer conservative defaults and say the weather data was unavailable.
-
-Return ONLY valid JSON with this exact schema (no extra text):
-{
-  "recommendations": [
-    {
-      "plant_label": "Rose",
-      "bounding_box": "15,40,90,120",
-      "area_id": "abc123",
-      "area_name": "Front Bed",
-      "water_liters_per_week": 4.5,
-      "fertilizer_dates": ["2025-09-05", "2025-10-03"]
-      "tip of the day": a short tip regarding an aspect of the garden that is not repetitive
-    }
-  ],
-  "explanation": "One short paragraph explaining key decisions."
-}
-`.trim();
-
-  const response = await axios.post(
-    "https://api.together.xyz/v1/chat/completions",
-    {
-      model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
-      messages: [
-        { role: "system", content: systemMessage },
-        { role: "user", content: JSON.stringify(jsonInput, null, 2) },
-      ],
-      temperature: 0.4,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  return response;
+function parseTipText(text) {
+  if (typeof text !== "string" || !text.trim()) {
+    throw new Error("LLM returned empty text");
+  }
+  try { return JSON.parse(text); } catch { }
+  const parsed = extractJsonFromText(text);
+  if (!parsed) throw new Error("LLM returned non-JSON");
+  return parsed;
 }
 
+async function callTip(systemMessage, developerMessage, chatPrompt) {
+  const userPrompt = JSON.stringify(chatPrompt);
+  const out = await postTip({
+    system: systemMessage,
+    developer: developerMessage,
+    user: userPrompt
+  });
+  const tip = parseTipText(out.text);
+  return tip;
+}
+
+
+//change this section to actualy work = this is just generic/////////////////////////////////////////////////////////
+function loadRecentTips() {
+  try { return JSON.parse(localStorage.getItem("recent_tips") || "[]").slice(-10); }
+  catch { return []; }
+}
+function saveRecentTip(tipJson) {
+  try {
+    const arr = loadRecentTips();
+    arr.push({
+      topic_tag: tipJson.topic_tag,
+      plant_ids: tipJson.plant_ids || [],
+      message_norm: (tipJson.message || "").toLowerCase().replace(/[^\w\s]/g, ""),
+      date: new Date().toISOString().slice(0, 10)
+    });
+    localStorage.setItem("recent_tips", JSON.stringify(arr.slice(-10)));
+  } catch { }
+}
+//TODO: change this section to work with mongoDB = this is just generic/////////////////////////////////////////////////////////
 
 /** ====================== main method ====================== */
 const Welcome = () => {
@@ -245,94 +382,91 @@ const Welcome = () => {
   const [loading, setLoading] = useState(false);
   const [ai, setAi] = useState({ recommendations: [], explanation: "" });
   const [snapshot, setSnapshot] = useState({ areas: [], flat: [] });
-
-
+  const [debugPrompt, setDebugPrompt] = useState(null);
+  const [debugWeather, setDebugWeather] = useState(null);
+  const [showDebug, setShowDebug] = useState(false);
   // this function creates the garden recommandation scheme and the output is the recommendation that is presented to the user
   async function buildAndSendGardenPlan() {
     setError("");
-    // this is a loading buffer while the API is being called
     setLoading(true);
-    // find users coordinations
+
     try {
+      // 1 - geolocation
       const coords = await new Promise((resolve, reject) => {
         if (!navigator.geolocation) return reject(new Error("Geolocation not supported"));
-        // use geolocation in order to find the user actual location and coordinations- on resolve gets the coordinations under pos.coords
         navigator.geolocation.getCurrentPosition(
           pos => resolve(pos.coords),
           err => reject(new Error(`Geolocation error: ${err.message}`))
         );
       });
       const { latitude, longitude } = coords;
-      // change the location using setState
       setLocation({ latitude, longitude });
-      // use the python server of googleAPI to get the weather data to the JS app with the coordinates we found
+
+      // 2 - fetch weather (raw)
       const weatherResp = await fetch("http://127.0.0.1:2021/weather", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ latitude, longitude }),
       });
-      // on error... 
       if (!weatherResp.ok) {
         const txt = await weatherResp.text().catch(() => "");
         throw new Error(`Weather HTTP ${weatherResp.status} ${txt}`);
       }
-      // change the format from python and validate response
       let weatherRaw;
       try {
         weatherRaw = await weatherResp.json();
       } catch {
         throw new Error("Weather service returned invalid JSON");
       }
-  /** this is the part where we build the full chat prompt using all of the functions we created to get a proper format */
-      const weather = normalizeWeather(weatherRaw) ?? { unavailable: true, raw: weatherRaw };
+
+      // 3 - time and location block
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Jerusalem";
+      const isoDate = new Date().toISOString();
+      const location_block = buildLocationBlock({ latitude, longitude, tz, isoDate });
+
+      // 4 - derive compact weather summary + features for LLM
+      const weather_summary = deriveDailyFromHourly(weatherRaw, isoDate);
+      const weather_features = computeWeatherFeaturesFromSummary(weather_summary);
+
+      // 5 - load plants before setSnapshot
       const plantsByArea = await loadGardenPlantsByArea();
       const flat = flattenPlants(plantsByArea);
-      // creating this json by areas
       setSnapshot({ areas: plantsByArea, flat });
 
-      // this is the chat Prompt, what will be sent to the API of LLM
-      const chatPrompt = {
-        weather,
-        plants_by_area: plantsByArea,
-        plants: flat,
-        location: { latitude, longitude },
-      };
-      
-      const answer = await callOpenAI(chatPrompt);
-      // to remove
-      console.log(answer);
-      // to get the content w.o relying on the organization of the LLM JSON response
-      const content = answer?.data?.choices?.[0]?.message?.content ?? "";
-      const parsed = extractJsonFromText(content);
-
-      // checking the response of the API properly
-      if (!parsed) {
-        console.warn("LLM did not return valid JSON. Raw:", content);
-        setAi({ recommendations: [], explanation: "" });
-        setError("The AI response was not valid JSON. Check console for details.");
-        return;
-      }
-      // SAME HERE
-      const recs = Array.isArray(parsed.recommendations)
-        ? parsed.recommendations
-        : parsed.recommendations
-        ? [parsed.recommendations]
-        : [];
-      // use the setAI to present on screen
-      setAi({
-        recommendations: recs,
-        explanation: parsed.explanation || "",
+      // 6 - build compact LLM payload
+      const compactPayload = stripNullsDeep({
+        user_timezone: tz,
+        calendar_today: isoDate,
+        location_block,
+        weather_summary,
+        weather_features,
+        plants: compactPlants(flat),
       });
-      // error
+
+      // 7 - fill debug panels
+      setDebugPrompt({ system: systemMessage, developer: developerMessage, user: compactPayload });
+      setDebugWeather({
+        raw: weatherRaw,
+        summary: weather_summary,
+        features: weather_features
+      });
+
+      // 8 - ask the model
+      const tip = await callTip(systemMessage, developerMessage, compactPayload);
+
+      // 9 - store
+      saveRecentTip(tip);
+      setAi({ recommendations: [tip], explanation: "" });
     } catch (e) {
       console.error(e);
       setError(e.message || "Unknown error");
       setAi({ recommendations: [], explanation: "" });
     } finally {
-      // finishing the wait for the response
       setLoading(false);
     }
   }
+
+
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: 16 }}>
@@ -373,7 +507,44 @@ const Welcome = () => {
           {error}
         </p>
       )}
+      {/* debug need to remove */}
+      <div style={{ marginTop: 12 }}>
+        <button type="button" onClick={() => setShowDebug(s => !s)}>
+          {showDebug ? "Hide debug" : "Show debug"}
+        </button>
+      </div>
 
+      {showDebug && (
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid #ddd", borderRadius: 8 }}>
+          <h4 style={{ marginTop: 0 }}>Debug - outgoing prompt</h4>
+          <details open>
+            <summary><strong>System message</strong></summary>
+            <pre style={{ whiteSpace: "pre-wrap" }}>{debugPrompt?.system || "(none)"}</pre>
+          </details>
+          <details>
+            <summary><strong>Developer message</strong></summary>
+            <pre style={{ whiteSpace: "pre-wrap" }}>{debugPrompt?.developer || "(none)"}</pre>
+          </details>
+          <details>
+            <summary><strong>User JSON</strong></summary>
+            <pre>{JSON.stringify(debugPrompt?.user ?? {}, null, 2)}</pre>
+          </details>
+          <h4>Debug - weather</h4>
+          <details>
+            <summary><strong>Weather raw</strong></summary>
+            <pre>{JSON.stringify(debugWeather?.raw ?? {}, null, 2)}</pre>
+          </details>
+          <details>
+            <summary><strong>Weather summary</strong></summary>
+            <pre>{JSON.stringify(debugWeather?.summary ?? {}, null, 2)}</pre>
+          </details>
+          <details>
+            <summary><strong>Weather features</strong></summary>
+            <pre>{JSON.stringify(debugWeather?.features ?? {}, null, 2)}</pre>
+          </details>
+
+        </div>
+      )}
       {/* Preview of what we sent for plants_by_area */}
       {snapshot.areas.length > 0 && (
         <div style={{ marginTop: 16 }}>
@@ -396,28 +567,19 @@ const Welcome = () => {
       {/* AI output */}
       {ai.recommendations.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <h4>AI care plan</h4>
-          <ul>
-            {ai.recommendations.map((r, i) => (
-              <li key={i}>
-                <strong>{r.plant_label}</strong>
-                {r.area_name ? ` in ${r.area_name}` : ""}
-                {" - "}
-                bbox {r.bounding_box}
-                {typeof r.water_liters_per_week === "number" && (
-                  <> • water: {r.water_liters_per_week} L/week</>
-                )}
-                {Array.isArray(r.fertilizer_dates) && r.fertilizer_dates.length > 0 && (
-                  <> • fertilizer: {r.fertilizer_dates.join(", ")}</>
-                )}
-              </li>
-            ))}
-          </ul>
-          {ai.explanation && <p><em>{ai.explanation}</em></p>}
+          <h4>Daily tip</h4>
+          {ai.recommendations.map((r, i) => (
+            <div key={i}>
+              <strong>{r.title}</strong>
+              <p>{r.message}</p>
+              <div style={{ fontSize: 12, color: "#666" }}>
+                <span>Category: {r.category}</span>{' | '}
+                <span>Topic: {r.topic_tag}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
-    </div>
-  );
-};
-
+    </div>);
+}
 export default Welcome;
