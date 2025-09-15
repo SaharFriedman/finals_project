@@ -1,4 +1,3 @@
-import SignOutButton from "../components/SignOutButton";
 import { useState } from "react";
 import { authHeaders } from "../api/http";
 import { postTip } from "../api/helper";
@@ -11,44 +10,178 @@ import "../art/components/components.css"
 const API_BASE = "http://localhost:12345/api";
 // this is the welcome page, it consists some information about the user and recommendations for it
 const systemMessage = `
-You are Garden Daily Tip Engine. Produce one concise, high-value tip using only the provided input. Always obey the Output schema exactly and return strict JSON only.
+You are Garden Weekly UI Engine. Produce one concise daily tip and a weekly carousel of topic cards for this specific home garden using only the provided data. Be precise, practical, and friendly. If not enough specific content exists, return safe generics.
 `.trim();
 
 const developerMessage = `
-Hard constraints
-- Use only the values in location_block, weather_features, weather_summary, and plants. If a field is null or missing, treat it as unknown.
-- Do not infer climate or seasons beyond what location_block gives you.
-- Never mention frost unless weather_features.frost_flag === true.
-- Never mention heatwave unless weather_features.heat_flag === true.
-- Never recommend watering if weather_features.rain_next_24h_mm >= 3.
-- If weather_summary.available === false, avoid weather-based advice and use seasonality only if provided via location_block.
+Objectives
+1) Output two things:
+   A. daily_tip - one item with header, subheader, and a 40-80 word body.
+   B. topics - 3 to 8 weekly topic cards. Each card has a header and a short body.
 
-Decision rules (priority high to low)
-A) Imminent weather impact on tasks - only if *_flag is true or numeric thresholds appear.
-B) Plant-stage windows by month - use location_block.hemisphere and calendar_today to infer season if provided there.
-C) Care schedule due now or overdue (watering, fertilizing, pruning, staking, pest checks).
-D) General best practice fallback.
+2) The daily tip must be an elevated pick from the topics. Link it with source_topic_tag and do not copy-paste the same sentences. Expand it with the most urgent and helpful details for today.
 
-Style and output
-- One tip only. 40-80 words. One actionable step. No lists. No emojis.
-- Mention specific plants when relevant (common name only). Prefer concrete amounts or thresholds when available.
-- Avoid hedging and repetition. No marketing language.
+Allowed topic headers
+- Weekly irrigation plan
+- Weekly weather summary
+- Plant of the week
+- Pest watch
+- Harvest radar
+- Fertilizing planner
+- General garden tip
 
-Output schema
-Return strict JSON only:
+Selection priorities for both daily_tip and topics (highest to lowest)
+1) Weather impact and scheduling - rain vs irrigation, heat, frost, wind
+2) Plant-stage windows by local month - sowing, flowering, fruit set, harvest
+3) Due or overdue care by intervals - watering, fertilizing, pruning, staking, pest checks
+4) Local seasonality and light maintenance - mulch, irrigation checks, tool care
+5) Generic evergreen items only to reach the count
+
+Novelty
+- daily_tip - do not repeat any topic_tag or near duplicate from the last 10 visits
+- topics - avoid repeating the same topic_tag used in the last 21 days unless weather-critical
+- Prefer diversity across categories. Maximum 2 cards from the same category.
+
+Weather guardrails
+- Never advise watering if rain_next_24h_mm >= 3 or soil likely wet
+- heat_flag - prefer deep watering in morning, shade or mulch tasks
+- frost_flag - protection tasks and deferrals
+- wind_gusty_flag - staking or defer spraying
+- uv_high_flag - schedule morning or late afternoon
+
+Style
+- daily_tip.header <= 60 chars, daily_tip.subheader <= 90 chars, daily_tip.message 40-80 words, one actionable step, no emojis, no bullet lists
+- topic card header must be exactly one of the allowed topic headers above
+- topic card body is short and skimmable - 25-80 words, 1-3 sentences, no emojis, no bullet lists
+- Mention specific plants by common name when relevant. Prefer concrete amounts or thresholds when available. Never invent plant types or dates.
+
+Topic guidance
+- Weekly irrigation plan - micro guidance for the next 7 days based on rain_next_24h_mm, heat_flag, container vs beds if known. Include a simple decision rule the user can apply this week.
+- Weekly weather summary - 5-7 day outlook. If prev_week_features are present, note the change vs last week and how to adjust.
+- Plant of the week - choose a garden plant not spotlighted in the last 4 weeks. If no plants exist, choose a common outdoor edible or shrub suitable for the location and season. Cover 2-4 of: Care Tips, Water, Sunlight, Temperature, Soil, Fertilize, Prune, Propagation, Transplant, Overwinter, Planting, Repotting, Harvest, Common Pests & Diseases. Keep to 25-80 words total.
+- Pest watch - seasonal pests to scout now and when to check. Add a simple action if found.
+- Harvest radar - only for plants in the user’s garden that are likely in fruiting or harvest stage. Never invent plants.
+- Fertilizing planner - who is due in the next 7 days based on last_fertilized_at and care_intervals. Give rate or type only if provided in input.
+- General garden tip - only when you need to reach the minimum count. Prefer tool care, mulch depth, irrigation checks.
+
+Output schema - strict JSON only
 {
-  "title": "string, ≤ 60 chars",
-  "message": "string, 40-80 words",
-  "category": "weather|watering|fertilizing|pruning|pests|harvest|planting|general",
-  "topic_tag": "kebab-case short tag, used for dedupe",
-  "plant_ids": ["optional array of plant_id strings"],
-  "novelty_reason": "why this is new vs last 10",
-  "source_data_refs": ["like weather_features.tmin_c", "plants.<name>.<field>"],
-  "next_review_date": "YYYY-MM-DD"
+  "daily_tip": {
+    "header": "string <= 60",
+    "subheader": "string <= 90",
+    "message": "string 40-80 words",
+    "category": "weather|watering|fertilizing|pruning|pests|harvest|planting|irrigation|cleanup|tools|houseplant|safety|general",
+    "topic_tag": "kebab-case",
+    "source_topic_tag": "kebab-case of the chosen topic card",
+    "plant_ids": ["optional"],
+    "novelty_reason": "string",
+    "source_data_refs": ["e.g. weather.tomorrow.rain_mm", "plants.tomato.stage"],
+    "next_review_date": "YYYY-MM-DD"
+  },
+  "topics": [
+    {
+      "header": "one of the allowed topic headers",
+      "body": "string 25-80 words",
+      "category": "weather|watering|fertilizing|pruning|pests|harvest|planting|irrigation|cleanup|tools|houseplant|safety|general",
+      "topic_tag": "kebab-case",
+      "plant_ids": ["optional"],
+      "relevance_score": 0.0,
+      "include": true
+    }
+  ],
+  "generation_notes": "why these were chosen"
 }
+
+Quantity and diversity
+- Aim for 6 topic cards. Minimum 3, maximum 8.
+- Sort topics by relevance_score descending. Mark non-relevant cards include=false.
+
+Watering micro-logic to apply consistently
+- If rain_next_24h_mm >= 3 - say to skip watering today and recheck tomorrow
+- Else if heat_flag - morning deep-water for containers, finger test beds at 3-5 cm
+- Else - finger test at 3-5 cm and water only if dry. Prefer deep but infrequent watering.
 `.trim();
 
 
+/** ====================== JSONUtilitie ====================== */
+function enrichFlagsWithWeeklyBase(features, weekly) {
+  try {
+    if (!Array.isArray(weekly) || weekly.length === 0) return features;
+    const dTomorrow = new Date(Date.now() + 86400000).toISOString().slice(0,10);
+    const tmr = weekly.find(d => d.date === dTomorrow) || weekly[1];
+    const f = { ...features };
+    if (Number.isFinite(tmr?.max_wind_kph)) f.wind_gusty_flag = tmr.max_wind_kph >= 35;
+    if (Number.isFinite(tmr?.uv_index_max)) f.uv_high_flag = tmr.uv_index_max >= 8;
+    return f;
+  } catch { return features; }
+}
+
+// normalize to YYYY-MM-DD
+function toYMD(iso) {
+  try { return new Date(iso).toISOString().slice(0, 10); }
+  catch { return new Date().toISOString().slice(0, 10); }
+}
+
+// turn your weather_summary into the expected "weather"
+function toWeatherFromSummary(weather_summary, week) {
+  if (!weather_summary?.available) return undefined;
+  const w = {
+    today: weather_summary.today && {
+      date: weather_summary.today.date,
+      t_min_c: weather_summary.today.t_min_c,
+      t_max_c: weather_summary.today.t_max_c,
+      rain_mm: weather_summary.today.rain_mm
+    },
+    tomorrow: weather_summary.tomorrow && {
+      date: weather_summary.tomorrow.date,
+      t_min_c: weather_summary.tomorrow.t_min_c,
+      t_max_c: weather_summary.tomorrow.t_max_c,
+      rain_mm: weather_summary.tomorrow.rain_mm
+    }
+  };
+  if (Array.isArray(week) && week.length > 0) {
+    w.week = week; 
+  }
+  return stripNullsDeep(w);
+}
+
+
+
+// novelty buffers - minimal localStorage versions - for right now!!!
+function loadRecentTopics() {
+  try { return JSON.parse(localStorage.getItem("recent_topics") || "[]"); }
+  catch { return []; }
+}
+function saveRecentTopics(topicArray) {
+  try {
+    const now = new Date().toISOString().slice(0, 10);
+    const prev = loadRecentTopics().filter(x => {
+      const d = new Date(x.date);
+      return Date.now() - d.getTime() < 21 * 24 * 3600 * 1000;
+    });
+    const add = (topicArray || []).map(t => ({ topic_tag: t.topic_tag, date: now }));
+    localStorage.setItem("recent_topics", JSON.stringify([...prev, ...add].slice(-100)));
+  } catch { }
+}
+
+// group plants to plants_by_area from "flat"
+function groupPlantsByArea(flat) {
+  const map = new Map();
+  for (const p of flat) {
+    const key = p.area_id || "unknown";
+    if (!map.has(key)) map.set(key, { area_id: p.area_id, area_name: p.area_name, plants: [] });
+    // keep fields you actually have - do not invent missing ones
+    map.get(key).plants.push({
+      plant_id: p.plant_id,
+      plant_label: p.plant_label,
+      container: p.container,
+      planted_month: p.planted_month ?? undefined,
+      last_watered_at: p.last_watered_at ?? undefined,
+      last_fertilized_at: p.last_fertilized_at ?? undefined
+    });
+  }
+  return Array.from(map.values());
+}
 
 /** ====================== Utilities ====================== */
 function buildLocationBlock({ latitude, longitude, tz, isoDate }) {
@@ -73,26 +206,32 @@ function buildLocationBlock({ latitude, longitude, tz, isoDate }) {
 function computeWeatherFeaturesFromSummary(summary) {
   if (!summary?.available) {
     return {
-      tmax_c: null, tmin_c: null, rain_next_24h_mm: null,
-      uv_index: null, wind_kph: null,
-      heat_flag: false, frost_flag: false, wind_gusty_flag: false, uv_high_flag: false
+      rain_next_24h_mm: null,
+      heat_flag: false,
+      frost_flag: false,
+      wind_gusty_flag: false,
+      uv_high_flag: false
     };
   }
-  const tmax = summary.tomorrow?.t_max_c ?? summary.today?.t_max_c ?? null;
-  const tmin = summary.tomorrow?.t_min_c ?? summary.today?.t_min_c ?? null;
-  const rain24 = summary.tomorrow?.rain_mm ?? null;
+
+  const base = summary.tomorrow || summary.today || {};
+  const tmax = base.t_max_c;
+  const tmin = base.t_min_c;
+  const rain24 = base.rain_mm;
+
+  const maxWind = base.max_wind_kph;   
+  const maxUvi  = base.uv_index_max;   
+
   return {
-    tmax_c: tmax,
-    tmin_c: tmin,
-    rain_next_24h_mm: rain24,
-    uv_index: null,
-    wind_kph: null,
+    rain_next_24h_mm: Number.isFinite(rain24) ? rain24 : null,
     heat_flag: Number.isFinite(tmax) ? tmax >= 32 : false,
     frost_flag: Number.isFinite(tmin) ? tmin <= 2 : false,
-    wind_gusty_flag: false,
-    uv_high_flag: false
+    wind_gusty_flag: Number.isFinite(maxWind) ? maxWind >= 35 : false, 
+    uv_high_flag: Number.isFinite(maxUvi) ? maxUvi >= 8 : false        
   };
 }
+
+
 function stripNullsDeep(obj) {
   if (Array.isArray(obj)) {
     return obj.map(stripNullsDeep).filter(v => v !== undefined);
@@ -242,18 +381,18 @@ function extractJsonFromText(text) {
   }
   return null;
 }
-
-
 function round1(n) { return Number.isFinite(n) ? Math.round(n * 10) / 10 : null; }
 
 function deriveDailyFromHourly(weatherRaw, tzNowIso) {
-  if (!weatherRaw?.hourly?.time || !weatherRaw.hourly.temperature_2m) {
-    return { available: false };
-  }
-  // Map each hourly record into local day buckets for today and tomorrow
-  const times = weatherRaw.hourly.time;
-  const temps = weatherRaw.hourly.temperature_2m;
-  const precip = weatherRaw.hourly.precipitation || [];
+  const H = weatherRaw?.hourly;
+  if (!H?.time || !H.temperature_2m) return { available: false };
+
+  const times = H.time;
+  const temps = H.temperature_2m;
+  const precip = H.precipitation || [];
+  const wind   = H.windspeed_10m || [];   // may be missing if backend not yet updated
+  const uvi    = H.uv_index || [];        // may be missing if backend not yet updated
+
   const now = new Date(tzNowIso);
   const todayYMD = tzNowIso.slice(0, 10);
   const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
@@ -262,31 +401,48 @@ function deriveDailyFromHourly(weatherRaw, tzNowIso) {
   const buckets = { [todayYMD]: [], [tomorrowYMD]: [] };
 
   for (let i = 0; i < times.length; i++) {
-    const ymd = times[i].slice(0, 10);
+    const ymd = String(times[i]).slice(0, 10);
     if (buckets[ymd]) {
       buckets[ymd].push({
         t: temps[i],
-        r: precip[i] ?? 0
+        r: precip[i] ?? 0,
+        w: wind[i] ?? null,
+        u: uvi[i] ?? null
       });
     }
   }
 
   function summarize(hours) {
     if (!hours || hours.length === 0) return null;
-    const tmin = Math.min(...hours.map(h => h.t));
-    const tmax = Math.max(...hours.map(h => h.t));
+    const tmin = Math.min(...hours.map(h => Number(h.t)));
+    const tmax = Math.max(...hours.map(h => Number(h.t)));
     const rsum = hours.reduce((a, h) => a + (Number(h.r) || 0), 0);
-    return { t_min_c: round1(tmin), t_max_c: round1(tmax), rain_mm: round1(rsum) };
+
+    // compute daily maxima when data is present
+    const winds = hours.map(h => Number(h.w)).filter(Number.isFinite);
+    const uvis  = hours.map(h => Number(h.u)).filter(Number.isFinite);
+    const maxWind = winds.length ? Math.max(...winds) : null;       // kph from Open-Meteo
+    const maxUVI  = uvis.length ? Math.max(...uvis) : null;
+
+    return {
+      t_min_c: round1(tmin),
+      t_max_c: round1(tmax),
+      rain_mm: round1(rsum),
+      ...(maxWind !== null ? { max_wind_kph: round1(maxWind) } : {}),
+      ...(maxUVI  !== null ? { uv_index_max:  round1(maxUVI) }  : {})
+    };
   }
 
   const today = summarize(buckets[todayYMD]);
   const tomorrowS = summarize(buckets[tomorrowYMD]);
+
   return {
     available: Boolean(today || tomorrowS),
     today: today ? { date: todayYMD, ...today } : null,
     tomorrow: tomorrowS ? { date: tomorrowYMD, ...tomorrowS } : null
   };
 }
+
 
 /** ====================== API wrappers ====================== */
 
@@ -369,10 +525,12 @@ function loadRecentTips() {
 function saveRecentTip(tipJson) {
   try {
     const arr = loadRecentTips();
+    const tag = tipJson?.daily_tip?.topic_tag || "unknown";
+    const msg = tipJson?.daily_tip?.message || "";
     arr.push({
-      topic_tag: tipJson.topic_tag,
-      plant_ids: tipJson.plant_ids || [],
-      message_norm: (tipJson.message || "").toLowerCase().replace(/[^\w\s]/g, ""),
+      topic_tag: tag,
+      plant_ids: tipJson?.daily_tip?.plant_ids || [],
+      message_norm: msg.toLowerCase().replace(/[^\w\s]/g, ""),
       date: new Date().toISOString().slice(0, 10)
     });
     localStorage.setItem("recent_tips", JSON.stringify(arr.slice(-10)));
@@ -423,7 +581,16 @@ const Welcome = () => {
       } catch {
         throw new Error("Weather service returned invalid JSON");
       }
+      function sanitizeRecentTips(arr) {
+  return (arr || [])
+    .filter(x => x && (x.topic_tag || x.message_norm))
+    .slice(-10);
+}
 
+const weeklyOutlook = Array.isArray(weatherRaw.weekly_outlook) ? weatherRaw.weekly_outlook : [];
+const prevWeekFeatures = weatherRaw.prev_week_features && typeof weatherRaw.prev_week_features === "object"
+  ? weatherRaw.prev_week_features
+  : null;
       // 3 - time and location block
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Jerusalem";
       const isoDate = new Date().toISOString();
@@ -431,33 +598,45 @@ const Welcome = () => {
 
       // 4 - derive compact weather summary + features for LLM
       const weather_summary = deriveDailyFromHourly(weatherRaw, isoDate);
-      const weather_features = computeWeatherFeaturesFromSummary(weather_summary);
+      const weather_features = enrichFlagsWithWeeklyBase(computeWeatherFeaturesFromSummary(weather_summary),weeklyOutlook);
 
       // 5 - load plants before setSnapshot
       const plantsByArea = await loadGardenPlantsByArea();
       const flat = flattenPlants(plantsByArea);
       setSnapshot({ areas: plantsByArea, flat });
 
-      // 6 - build compact LLM payload
-      const compactPayload = stripNullsDeep({
+      // 6 - build compact LLM payload - matches the agreed schema
+      const calendarYMD = new Date(isoDate).toISOString().slice(0, 10);
+      const weather = toWeatherFromSummary(weather_summary, weeklyOutlook);
+      const plants_by_area = groupPlantsByArea(flat);
+      const recent_tips = sanitizeRecentTips(loadRecentTips());
+      const recent_topics = loadRecentTopics(); // optional helper from earlier
+
+      const knowledge = {
+        regional_windows: [],
+        care_intervals: {}
+      };
+
+      const userPayload = stripNullsDeep({
         user_timezone: tz,
-        calendar_today: isoDate,
-        location_block,
-        weather_summary,
+        calendar_today: calendarYMD,
+        location: { latitude, longitude },
+        weather,
         weather_features,
+        plants_by_area,
         plants: compactPlants(flat),
+        recent_tips,
+        recent_topics,
+        knowledge,
+          ...(prevWeekFeatures ? { prev_week_features: prevWeekFeatures } : {})
       });
 
-      // 7 - fill debug panels
-      setDebugPrompt({ system: systemMessage, developer: developerMessage, user: compactPayload });
-      setDebugWeather({
-        raw: weatherRaw,
-        summary: weather_summary,
-        features: weather_features
-      });
+      // debug
+      setDebugPrompt({ system: systemMessage, developer: developerMessage, user: userPayload });
 
-      // 8 - ask the model
-      const tip = await callTip(systemMessage, developerMessage, compactPayload);
+      // send
+      const tip = await callTip(systemMessage, developerMessage, userPayload);
+
 
       // 9 - store
       saveRecentTip(tip);
@@ -470,125 +649,122 @@ const Welcome = () => {
       setLoading(false);
     }
   }
-const slides = [
-  {
-    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-    text: "Explore the garden",
-    ref: "/garden"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-    text: "Watering tips",
-    ref: "/tips/watering"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-    text: "Fertilizing guide",
-    ref: "/tips/fertilizing"
-  },  {
-    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-    text: "Explore the garden",
-    ref: "/garden"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-    text: "Watering tips",
-    ref: "/tips/watering"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-    text: "Fertilizing guide",
-    ref: "/tips/fertilizing"
-  },  {
-    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-    text: "Explore the garden",
-    ref: "/garden"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-    text: "Watering tips",
-    ref: "/tips/watering"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-    text: "Fertilizing guide",
-    ref: "/tips/fertilizing"
-  },  {
-    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-    text: "Explore the garden",
-    ref: "/garden"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-    text: "Watering tips",
-    ref: "/tips/watering"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-    text: "Fertilizing guide",
-    ref: "/tips/fertilizing"
-  },  {
-    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-    text: "Explore the garden",
-    ref: "/garden"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-    text: "Watering tips",
-    ref: "/tips/watering"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-    text: "Fertilizing guide",
-    ref: "/tips/fertilizing"
-  },  {
-    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-    text: "Explore the garden",
-    ref: "/garden"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-    text: "Watering tips",
-    ref: "/tips/watering"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-    text: "Fertilizing guide",
-    ref: "/tips/fertilizing"
-  },  {
-    photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-    text: "Explore the garden",
-    ref: "/garden"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-    text: "Watering tips",
-    ref: "/tips/watering"
-  },
-  {
-    photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-    text: "Fertilizing guide",
-    ref: "/tips/fertilizing"
-  }
-];
+  const slides = [
+    {
+      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+      text: "Explore the garden",
+      ref: "/garden"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+      text: "Watering tips",
+      ref: "/tips/watering"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+      text: "Fertilizing guide",
+      ref: "/tips/fertilizing"
+    }, {
+      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+      text: "Explore the garden",
+      ref: "/garden"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+      text: "Watering tips",
+      ref: "/tips/watering"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+      text: "Fertilizing guide",
+      ref: "/tips/fertilizing"
+    }, {
+      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+      text: "Explore the garden",
+      ref: "/garden"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+      text: "Watering tips",
+      ref: "/tips/watering"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+      text: "Fertilizing guide",
+      ref: "/tips/fertilizing"
+    }, {
+      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+      text: "Explore the garden",
+      ref: "/garden"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+      text: "Watering tips",
+      ref: "/tips/watering"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+      text: "Fertilizing guide",
+      ref: "/tips/fertilizing"
+    }, {
+      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+      text: "Explore the garden",
+      ref: "/garden"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+      text: "Watering tips",
+      ref: "/tips/watering"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+      text: "Fertilizing guide",
+      ref: "/tips/fertilizing"
+    }, {
+      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+      text: "Explore the garden",
+      ref: "/garden"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+      text: "Watering tips",
+      ref: "/tips/watering"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+      text: "Fertilizing guide",
+      ref: "/tips/fertilizing"
+    }, {
+      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
+      text: "Explore the garden",
+      ref: "/garden"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
+      text: "Watering tips",
+      ref: "/tips/watering"
+    },
+    {
+      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
+      text: "Fertilizing guide",
+      ref: "/tips/fertilizing"
+    }
+  ];
 
 
   return (
     <>
-      <Background/>
-    <div style={{  overflowX: "hidden", overflowY: "auto" , position:"sticky"}}>
-    <div >
-      <TopBar/>
-      <DailyTip 
-        header="Thin seedlings" 
-        subheader="Struggling = Too many seedlings too close together crowd each other out and compete for 
-                        sunlight and nutrients. None of them grow well."
-        content="Thriving = Each seedling has enough room. Seedlings grow quickly and get established. 
-                      After planting seeds, thin them early and often. Young seedlings will grow and thrive 
-                      when given enough room. Check mature spacing guidelines and square foot spacing in this blog post. "  
-      />
-     <SlideShow slidesComponents={slides} title="Recommended for you"/>
-      {/* <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+      <Background />
+      <div style={{ overflowX: "hidden", overflowY: "auto", position: "sticky" }}>
+        <div >
+          <TopBar />
+          <DailyTip
+            header= {ai.recommendations[0]?.daily_tip?.header||""}
+            subheader={ai.recommendations[0]?.daily_tip?.subheader||""}
+            content={ai.recommendations[0]?.daily_tip?.message||""}
+          />
+          <SlideShow slidesComponents={slides} title="Ready for the week ahead" />
+          {/* <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <button
           className="my-garden-button"
           type="button"
@@ -597,104 +773,30 @@ const slides = [
           Enter your gardens
         </button>
 
-        <button
-          type="button"
-          onClick={buildAndSendGardenPlan}
-          disabled={loading}
-          title="Geolocate, fetch weather and your entire garden, then ask the AI for a care plan"
-        >
-          {loading ? "Working..." : "Get garden care plan"}
-        </button>
+        
+        </div> */}
+          <button
+            type="button"
+            onClick={buildAndSendGardenPlan}
+            disabled={loading}
+            title="Geolocate, fetch weather and your entire garden, then ask the AI for a care plan"
+          >
+            {loading ? "Working..." : "Get garden care plan"}
+          </button>
+          {debugPrompt && (
+            <>
+              <div>User request</div>
+              <pre>{JSON.stringify(debugPrompt.user, null, 2)}</pre>
+            </>
+          )}
 
-      </div> */}
-
-      {location && (
-        <p style={{ marginTop: 8 }}>
-          Latitude: {location.latitude}
-          <br />
-          Longitude: {location.longitude}
-        </p>
-      )}
-
-      {error && (
-        <p style={{ color: "red", marginTop: 8 }}>
-          {error}
-        </p>
-      )}
-      {/* debug need to remove */}
-      {/* <div style={{ marginTop: 12 }}>
-        <button type="button" onClick={() => setShowDebug(s => !s)}>
-          {showDebug ? "Hide debug" : "Show debug"}
-        </button>
-      </div>
-
-      {showDebug && (
-        <div style={{ marginTop: 12, padding: 12, border: "1px solid #ddd", borderRadius: 8 }}>
-          <h4 style={{ marginTop: 0 }}>Debug - outgoing prompt</h4>
-          <details open>
-            <summary><strong>System message</strong></summary>
-            <pre style={{ whiteSpace: "pre-wrap" }}>{debugPrompt?.system || "(none)"}</pre>
-          </details>
-          <details>
-            <summary><strong>Developer message</strong></summary>
-            <pre style={{ whiteSpace: "pre-wrap" }}>{debugPrompt?.developer || "(none)"}</pre>
-          </details>
-          <details>
-            <summary><strong>User JSON</strong></summary>
-            <pre>{JSON.stringify(debugPrompt?.user ?? {}, null, 2)}</pre>
-          </details>
-          <h4>Debug - weather</h4>
-          <details>
-            <summary><strong>Weather raw</strong></summary>
-            <pre>{JSON.stringify(debugWeather?.raw ?? {}, null, 2)}</pre>
-          </details>
-          <details>
-            <summary><strong>Weather summary</strong></summary>
-            <pre>{JSON.stringify(debugWeather?.summary ?? {}, null, 2)}</pre>
-          </details>
-          <details>
-            <summary><strong>Weather features</strong></summary>
-            <pre>{JSON.stringify(debugWeather?.features ?? {}, null, 2)}</pre>
-          </details>
-
+          {ai.recommendations.length > 0 && (
+            <>
+              <div>AI response</div>
+              <pre>{JSON.stringify(ai.recommendations[0], null, 2)}</pre>
+            </>
+          )}
         </div>
-      )} */}
-      {/* Preview of what we sent for plants_by_area */}
-      {snapshot.areas.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <h4>Your garden snapshot</h4>
-          {snapshot.areas.map(a => (
-            <div key={a.area_id} style={{ marginBottom: 8 }}>
-              <strong>{a.area_name}</strong> ({a.plants.length} plants)
-              <ul style={{ marginTop: 4 }}>
-                {a.plants.map((p, i) => (
-                  <li key={`${a.area_id}-${i}`}>
-                    {p.plant_label} - bbox {p.bounding_box}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* AI output */}
-      {ai.recommendations.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <h4>Daily tip</h4>
-          {ai.recommendations.map((r, i) => (
-            <div key={i}>
-              <strong>{r.title}</strong>
-              <p>{r.message}</p>
-              <div style={{ fontSize: 12, color: "#666" }}>
-                <span>Category: {r.category}</span>{' | '}
-                <span>Topic: {r.topic_tag}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-  </div>    
-</div></>);
+      </div></>);
 }
 export default Welcome;
