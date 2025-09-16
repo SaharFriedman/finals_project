@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@100&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Allura&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 .contentContainer{
     width: 100%;
     display: flex;
@@ -17,7 +19,6 @@
     height: 8vh;
     border-radius: 6px;
     border: none;
-    font-family: sans-serif;
     transition: all ease 0.3s;
 }
 .FormButton:hover{
@@ -121,6 +122,7 @@
 .dailyTipHeaderContainer{
     color: wheat;
     font-size: 7vh;
+    font-weight: bold;
     display: flex;
     padding-left: 1rem;
     text-shadow: 1px 1px 1px black, 1px 1px 3px black, 1px 1px 5px black, 1px 1px 7px black;
@@ -255,4 +257,744 @@
 @media (max-width: 640px) {
   .nf-carousel { padding: 0 2.25rem; }
   .nf-nav { height: 44px; width: 36px; font-size: 1.6rem; }
+}
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  background: #fff;
+  color: #000;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 600px;
+  max-height: 70vh;
+  overflow-y: auto;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.modal-close {
+  margin-top: 1rem;
+  background: #2d7a2d;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.LogoWelcome{
+  margin-top: 10vh;
+  color: rgb(7, 61, 11);
+}
+.welcome-row {
+  display: flex;
+  justify-content: center; /* push items apart */
+  align-items: center;            /* align vertically */
+  gap: 16px;                      /* optional spacing between */
+}
+.welcomePageForm{
+  margin-top: 10vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10vh;
+}
+.welcome-text { 
+  display: flex;
+  flex-direction: column;
+  display: flex;
+  align-items: start; 
+  justify-content: center;
+  box-sizing: border-box;
+  text-align: center;
+  color: white;
+  font-weight: 100;
+  font-size: 3.5vh;
+    text-shadow: 1px 1px 3px #055705, 1px 1px 5px #044504,
+               1px 1px 7px #033303, 1px 1px 9px #022202;
+               max-width: 40vw;
+               max-height: 40vh;
+               text-align: start;
+}
+.welcome-text h1{ 
+  display: flex;
+  flex-direction: column;
+  margin-top: 10vh;
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+  text-align: start;
+  color: white;
+  font-weight: 600;
+  font-size: 5vh;
+    text-shadow: 1px 1px 3px #055705, 1px 1px 5px #044504,
+               1px 1px 7px #033303, 1px 1px 9px #022202;
+               max-width: 40vw;
+               max-height: 40vh;
+               text-align: start;
+}
+.welcomePageForm button{
+  width: 12vw;
+  aspect-ratio: 3;
+  border-radius: 5px;
+  border-color: rgba(255, 255, 255, 0.431);
+  border-width: 1px;
+  font-size: 3.5vh;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 300;
+  background-color: #4cd26e41;
+  color: white;
+  text-shadow: 1px 1px 3px #055705, 1px 1px 5px #044504,
+               1px 1px 7px #033303, 1px 1px 9px #022202;
+  transition: all  0.3s ease-in-out;
+}
+.welcomePageForm button:hover{
+  transform: scale(1.05);
+  background-color: #42e66bac;
+}
+/* ------------------- popup overlay ------------------------------- */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(0,0,0,1) 0%,rgba(0,0,0,1)20%, rgba(0,0,0,0.6) 55%, rgba(0,0,0,0) 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999; /* above everything */
+}
+
+
+.popup-container {
+  background: rgba(86, 189, 115, 0.3);
+  padding: 24px;
+  border-radius: 8px;
+  aspect-ratio: 15/20;
+  width:25vw;
+  max-width: 90%;
+  box-shadow: 1px 1px 3px rgba(0,0,0,1), 0 4px 10px rgba(0,0,0,1);
+  border-width: 1px;
+  border-color: #ffffff;
+  border-style: solid;
+    display: flex;
+  justify-content: center;
+}
+
+.popup-container input{
+  color:white;
+  min-height: 40px;
+  min-width: 250px;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: white;
+  border-width: 1px;
+  padding: 0;
+  padding-left: 10px;
+  margin: 0;
+  background-color: #1d3604;
+  box-shadow: inset 1px -1px 3px white, 
+              inset 1px 1px 5px rgba(255, 255, 255, 0.6), 
+              inset 1px 1px 7px rgba(255, 255, 255, 0.4),
+              3px 3px 7px rgba(0, 0, 0, 1), 1px 1px 20px rgba(0, 0, 0, 0.4);
+  
+}
+.popup-container input::placeholder{
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 3px;
+  border-radius: 10px;
+  color:white;
+  font-family: 'Roboto', sans-serif; 
+  font-weight: 100;
+  
+}
+
+.popup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.popup-text {
+  padding-top: 5vh;
+  font-size: 8vh;
+  color: #ffffff;
+  text-shadow: 0 4px 5px #000;
+  font-weight: 100;
+  margin-bottom: 8px;
+  font-family: "Allura", cursive;
+}
+
+.popup-actions {
+  margin-top: 4vh;
+  display: flex;
+  justify-content: center;
+}
+
+.popup-actions button{
+  width: 10vw;
+  aspect-ratio: 3;
+  border-radius: 5px;
+  border-color: rgba(255, 255, 255, 0.431);
+  border-width: 1px;
+  font-size: 3.5vh;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  background-color: #ffffff23;
+  color: white;
+  text-shadow: 0px 4px 10px black;
+  transition: all  0.3s ease-in-out;
+}
+.popup-actions button:hover{
+  transform: scale(1.05);
+  box-shadow: 3px 3px 30px rgba(0, 0, 0, 1);
+}
+/* ----------------------------- loading ------------------------------------------ */
+:root {
+  --brand-green: #2ee86c; /* tweak to your palette */
+    --dropdown-bg: transparent;            /* transparent panel */
+  --dropdown-border: rgba(46, 232, 108, 0.6);
+  --dropdown-text: #e9fff1;
+  --dropdown-active-bg: rgba(46, 232, 108, 0.12); /* hover/active tint */
+  --dropdown-selected-dot: var(--brand-green);
+}
+
+.loading-overlay.is-hidden {
+  opacity: 0; /* triggers the fade out */
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle,
+    rgba(0, 0, 0, 1) 0%,        /* pure black in the center */
+    rgb(13, 70, 32) 70%, /* bright green mid-way */
+    rgba(3, 92, 33, 0.9) 100%   /* solid green at edges */
+  );
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 2000;
+}
+
+
+.loading-text {
+  color: white;
+  font-size: 15vh;
+  font-weight: 500;
+  margin:10vh;
+  font-family: "Allura", cursive;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+/* ------------------------------ searh button ------------------------------------------------------------------------------- */
+.SearchForm {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;   
+  max-width: 50vw;
+  position: fixed;       
+  bottom: 0;             /* align to bottom */
+  margin-left: 10vw;
+  margin-bottom: 5vh;
+  padding: 10px;         /* spacing */
+  background: transparent;      /* solid background so it’s readable */
+  z-index: 1000;
+}
+.blurred {
+  position: fixed;
+  bottom: 20px;
+  left:400px;
+  width: 100vw;
+  min-height: 100px; /* just tall enough for your search form */
+  background: rgba(255, 255, 255, 0.0);  /* semi-transparent white overlay */
+  backdrop-filter: blur(12px);           /* actually blurs content behind */
+  -webkit-backdrop-filter: blur(12px);   /* Safari support */
+  
+  z-index: 999;  /* sit just under your search form */
+}
+
+
+.SearchForm button{
+  margin-left:2vw ;
+  border-style: solid;
+  border-width: 1px;
+  border-color: white;
+  background: rgba(255, 255, 255, 0.309);
+  color: white;
+  border-radius: 15px;
+  width: 7vw;
+  aspect-ratio: 2;
+  box-shadow:1px 1px 1px black;
+  transition: all 0.3s ease-in-out;
+
+}
+.SearchForm button:hover{
+
+  transform:scale(1.05);
+
+}
+
+.SearchForm input{
+  border-style: solid;
+  border-width: 1px;
+  border-color: white;
+  background: rgba(255, 255, 255, 0.309);
+  width: 45vw;
+  height: 7vh;
+  color: white;
+  border-radius: 15px;
+  padding: 10px;
+  box-shadow:1px 1px 1px black;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  font-size: 1.5rem;
+  transition: all 0.3s ease-in-out;
+}
+.SearchForm input::placeholder{
+  color: rgba(255, 255, 255, 0.657);
+}
+.SearchForm input:focus{
+  transform:scale(1.05);
+  padding: 10px;
+  border: none;
+  border-color: rgb(255, 255, 255);
+  background: rgba(0, 0, 0, 0.415);
+  color: white;
+  border-radius: 15px;
+  box-shadow:1px 4px 10px black;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  font-size: 1.5rem;
+
+}
+.selectTopDown{
+appearance: none;        
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border-style: solid;
+  padding-left: 10px;
+  padding-right: 10px;
+  height: 5vh;
+  border-width: 1px;
+  border-color: white;
+  background-color:rgba(4, 138, 150, 0);
+  color: white;
+  border-radius: 15px;
+  aspect-ratio: 4;
+  box-shadow:1px 1px 1px black;
+  transition: all 0.3s ease-in-out;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 22px;
+}
+.selectTopDown option{
+
+  background-color:rgba(255, 255, 255, 0);
+
+}
+.myGardenBtn{
+  border-style: solid;
+  height: 5vh;
+  border-width: 1px;
+  border-color: white;
+  background: rgba(255, 255, 255, 0.309);
+  color: white;
+  border-radius: 5px;
+  aspect-ratio: 4;
+  box-shadow:1px 1px 1px black;
+  text-shadow: 1px 1px 4px black;
+  transition: all 0.3s ease-in-out;
+}
+
+/* container */
+.custom-select {
+  appearance: none;        
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: relative;
+  display: inline-block;
+  min-width: 220px;
+  outline: none;
+}
+
+/* trigger button */
+.custom-select__button {
+  appearance: none;        
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid white;
+  background: rgba(0, 0, 0, 0.35);    /* semi transparent */
+  color: white;
+  cursor: pointer;
+}
+
+.custom-select__button:focus-visible {
+  appearance: none;        
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-shadow: 0 0 0 2px rgba(46, 232, 108, 0.35);
+}
+
+/* current value */
+.custom-select__value.is-placeholder {
+  opacity: 0.8;
+}
+
+/* chevron uses currentColor */
+.custom-select__chev {
+  pointer-events: none;
+}
+
+/* options panel - transparent */
+.custom-select__list {
+    appearance: none;        
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 6px;
+  margin: 0;
+  list-style: none;
+  font-weight: 100;
+
+  background: rgba(0, 0, 0, 0.442);      /* transparent */
+  border: 1px solid white;
+  border-radius: 10px;
+  color:white;
+  text-shadow: 0 4px 20px rgb(255, 255, 255);
+  backdrop-filter: blur(8px);          /* softens page behind if supported */
+  z-index: 1000;
+}
+
+/* each option */
+.custom-select__option {
+    appearance: none;        
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.custom-select__option:hover,
+.custom-select__option.is-active {
+  background: black;
+}
+
+.custom-select__option.is-selected::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: white;
+  display: inline-block;
+}
+.inputFileMyGardenPage{
+  border-style: solid;
+  aspect-ratio: 1/3;
+  height: 5vh;
+  border-width: 1px;
+  border-color: white;
+  background: rgba(255, 255, 255, 0.309);
+  color: transparent;
+  border-radius: 5px;
+  box-shadow:1px 1px 1px black;
+  text-shadow: 1px 1px 4px black;
+  transition: all 0.3s ease-in-out;
+}
+.MyGardenSecondMenuButton{
+  border-style: solid;
+  height: 5vh;
+  border-width: 1px;
+  border-color: white;
+  background:  rgba(0, 0, 0, 0.442);
+  color: white;
+  border-radius: 5px;
+  aspect-ratio: 4;
+  box-shadow:1px 1px 1px black;
+  text-shadow: 1px 1px 4px black;
+  transition: all 0.3s ease-in-out;
+}
+.MyGardenSecondMenuButton:disabled{
+  opacity: 0.2;
+}
+.MyGardenSecondMenuButton:enabled{
+  opacity: 1;
+}
+.custom-file-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: inherit;
+}
+
+/* Custom button */
+.upload-button {
+  padding-top: 5px;
+  border-style: solid;
+  height: 5vh;
+  border-width: 1px;
+  border-color: white;
+  background:  rgba(0, 0, 0, 0.442);
+  color: white;
+  border-radius: 5px;
+  aspect-ratio: 4;
+  box-shadow:1px 1px 1px black;
+  text-shadow: 1px 1px 4px black;
+  transition: all 0.3s ease-in-out;
+}
+
+
+
+/* Selected file name */
+.file-name {
+  font-size: 14px;
+  color: #e0e0e0; /* light text */
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.savedPhotoDisplayerMyGarden{
+    padding-top: 5px;
+  border-style: solid;
+  max-width: 32vw;
+  border-width: 1px;
+  border-color: white;
+  background:  rgba(0, 0, 0, 0.442);
+  color: white;
+  border-radius: 5px;
+  aspect-ratio: 4;
+  box-shadow:1px 1px 1px black;
+  text-shadow: 1px 1px 4px black;
+  transition: all 0.3s ease-in-out;
+}
+.boxPickerBtn{
+  padding:5px;
+  border-style: solid;
+  width: 8vw;
+  height: 6vh;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-width: 1px;
+  border-color: white;
+  background:  rgba(0, 0, 0, 0.442);
+  color: white;
+  border-radius: 5px;
+  aspect-ratio: 4;
+  box-shadow:1px 1px 1px black;
+  text-shadow: 1px 1px 4px black;
+  transition: all 0.3s ease-in-out;
+}
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: min(90vw, 900px);
+}
+
+.picker__title {
+  text-align: center;
+  color: #e9e9e9;
+  font-weight: 600;
+}
+
+/* middle row: photo with drawing layer */
+.picker__imageWrap {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  max-height: 70vh;          /* keep buttons visible */
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+}
+
+/* photo */
+.picker__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: brightness(0.9);
+}
+
+/* canvas on top of the photo */
+.picker__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+/* bottom row: actions */
+.picker__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+.addPlantAreaBtnInfo{
+    padding:5px;
+  border-style: solid;
+  width: 8vw;
+  height: 6vh;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-width: 1px;
+  border-color: white;
+  background:  rgba(0, 0, 0, 0.442);
+  color: white;
+  border-radius: 5px;
+  aspect-ratio: 4;
+  box-shadow:1px 1px 1px black;
+  text-shadow: 1px 1px 4px black;
+  transition: all 0.3s ease-in-out;
+}
+.formOfInfoOfAddPlantOfSaveOfPhoto h3{
+color: rgb(144, 255, 132);
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+}
+.numberOfIndexInfo{
+color: rgb(255, 255, 255);
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  font-size: large;
+}
+.labelOfDataInfo input{box-shadow:1px 4px 10px black;
+      padding:5px;
+  background:  rgba(0, 0, 0, 0.442);
+   border-width: 1px;
+  border-color: white;
+    border-radius: 5px;
+    color: white;
+}
+.labelOfContainerInfo select
+{
+  box-shadow:1px 4px 10px black;
+        padding:5px;
+  background:  rgba(0, 0, 0, 0.442);
+   border-width: 1px;
+  border-color: white;
+    border-radius: 5px;
+    color: white;
+}.labelOfContainerInfo code
+{ box-shadow:1px 4px 10px black;
+  font-size: large;
+  padding:5px;
+  background:  rgba(0, 0, 0, 0);
+   border-width: 1px;
+  border-color: white;
+    border-radius: 5px;
+    color: rgb(218, 0, 106);
+}.labelOfContainerInfo input
+{box-shadow:1px 4px 10px black;
+        padding:5px;
+  background:  rgba(0, 0, 0, 0.442);
+   border-width: 1px;
+  border-color: white;
+    border-radius: 5px;
+    color: white;
+}
+.TableOfSavedPlants th{
+  color: rgb(255, 255, 255);
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  font-size: large;
+}
+.TableOfSavedPlants {
+background:  rgba(0, 0, 0, 0.442);
+max-width: 90vw;
+border: 1px solid white;
+}
+.TableOfSavedPlants td{
+  color: rgb(255, 255, 255);
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  font-size: large;
+  border: 1px solid rgba(255, 255, 255, 0.457);
+}
+.deleteBtnOfSavedTable{
+  border: none;
+  background: transparent;
+  color: rgb(255, 255, 255);
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  font-size: large;
+  transition: all 0.3s ease-in-out ;
+}
+.deleteBtnOfSavedTable:hover{
+  transform: scale(1.1);
+}
+.TableOfSavedPlants tr{
+  border: 1px solid rgba(255, 255, 255, 0.457);
+
+}
+.botBaseContainer{
+  background: transparent;
+  color: rgb(255, 255, 255);
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  font-size: large;
+  transition: all 0.3s ease-in-out ;
+}
+/* Chrome, Safari, Edge */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+.botAndChatRole{
+  color: rgb(0, 0, 0);
+  font-family: 'Roboto', sans-serif;
+  font-size: 2rem;
+  font-weight: 300;
+}
+.botAndChatText{
+  color: rgb(255, 255, 255);
+  font-family: 'Roboto', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 100;
+  text-shadow: 0px 4px 2px black;
 }

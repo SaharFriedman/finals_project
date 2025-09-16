@@ -6,7 +6,35 @@ import DailyTip from "../art/components/dailyTip.js";
 import Background from "../art/components/Background.js";
 import SlideShow from "../art/components/SlidesShow.js";
 import "../art/components/components.css"
+import irrigationImg from "../art/assets/weekly-irrigation-plan.jpg";
+import weatherImg from "../art/assets/weekly-weather-summary.jpg";
+import plantImg from "../art/assets/plant-of-the-week.jpg";
+import pestImg from "../art/assets/pest-watch.jpg";
+import harvestImg from "../art/assets/harvest-radar.jpg";
+import fertilizingImg from "../art/assets/fertilizing-planner.jpg";
+import fallbackImg from "../art/assets/general-garden-tip.jpg";
+import Loading from "../art/components/loading.js";
+import MyGardenButton from "../components/MyGardenButton.js";
+import MyHelper from "../components/BotButton.js";
 
+
+const BASE_TAGS = new Set([
+  "weekly-irrigation-plan",
+  "weekly-weather-summary",
+  "plant-of-the-week",
+  "pest-watch",
+  "harvest-radar",
+  "fertilizing-planner",
+]);
+
+const topicImages = {
+  "weekly-irrigation-plan": irrigationImg,
+  "weekly-weather-summary": weatherImg,
+  "plant-of-the-week": plantImg,
+  "pest-watch": pestImg,
+  "harvest-radar": harvestImg,
+  "fertilizing-planner": fertilizingImg,
+};
 const API_BASE = "http://localhost:12345/api";
 // this is the welcome page, it consists some information about the user and recommendations for it
 const systemMessage = `
@@ -19,7 +47,9 @@ Objectives
    A. daily_tip - one item with header, subheader, and a 40-80 word body.
    B. topics - 3 to 8 weekly topic cards. Each card has a header and a short body.
 
-2) The daily tip must be an elevated pick from the topics. Link it with source_topic_tag and do not copy-paste the same sentences. Expand it with the most urgent and helpful details for today.
+2) The daily tip must reflect the most urgent and helpful detail for today, based on weather and plant data. 
+   - It may be inspired by one of the weekly topic cards, but it does not need to be a direct copy. 
+   - Do not simply repeat the topic body; expand or synthesize new details.
 
 Allowed topic headers
 - Weekly irrigation plan
@@ -41,6 +71,7 @@ Novelty
 - daily_tip - do not repeat any topic_tag or near duplicate from the last 10 visits
 - topics - avoid repeating the same topic_tag used in the last 21 days unless weather-critical
 - Prefer diversity across categories. Maximum 2 cards from the same category.
+- If no new specific care windows are available, rotate through General garden tip, Tools, Cleanup, or Weekly weather summary instead of repeating watering.
 
 Weather guardrails
 - Never advise watering if rain_next_24h_mm >= 3 or soil likely wet
@@ -107,7 +138,7 @@ Watering micro-logic to apply consistently
 function enrichFlagsWithWeeklyBase(features, weekly) {
   try {
     if (!Array.isArray(weekly) || weekly.length === 0) return features;
-    const dTomorrow = new Date(Date.now() + 86400000).toISOString().slice(0,10);
+    const dTomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     const tmr = weekly.find(d => d.date === dTomorrow) || weekly[1];
     const f = { ...features };
     if (Number.isFinite(tmr?.max_wind_kph)) f.wind_gusty_flag = tmr.max_wind_kph >= 35;
@@ -140,7 +171,7 @@ function toWeatherFromSummary(weather_summary, week) {
     }
   };
   if (Array.isArray(week) && week.length > 0) {
-    w.week = week; 
+    w.week = week;
   }
   return stripNullsDeep(w);
 }
@@ -219,15 +250,15 @@ function computeWeatherFeaturesFromSummary(summary) {
   const tmin = base.t_min_c;
   const rain24 = base.rain_mm;
 
-  const maxWind = base.max_wind_kph;   
-  const maxUvi  = base.uv_index_max;   
+  const maxWind = base.max_wind_kph;
+  const maxUvi = base.uv_index_max;
 
   return {
     rain_next_24h_mm: Number.isFinite(rain24) ? rain24 : null,
     heat_flag: Number.isFinite(tmax) ? tmax >= 32 : false,
     frost_flag: Number.isFinite(tmin) ? tmin <= 2 : false,
-    wind_gusty_flag: Number.isFinite(maxWind) ? maxWind >= 35 : false, 
-    uv_high_flag: Number.isFinite(maxUvi) ? maxUvi >= 8 : false        
+    wind_gusty_flag: Number.isFinite(maxWind) ? maxWind >= 35 : false,
+    uv_high_flag: Number.isFinite(maxUvi) ? maxUvi >= 8 : false
   };
 }
 
@@ -390,8 +421,8 @@ function deriveDailyFromHourly(weatherRaw, tzNowIso) {
   const times = H.time;
   const temps = H.temperature_2m;
   const precip = H.precipitation || [];
-  const wind   = H.windspeed_10m || [];   // may be missing if backend not yet updated
-  const uvi    = H.uv_index || [];        // may be missing if backend not yet updated
+  const wind = H.windspeed_10m || [];   // may be missing if backend not yet updated
+  const uvi = H.uv_index || [];        // may be missing if backend not yet updated
 
   const now = new Date(tzNowIso);
   const todayYMD = tzNowIso.slice(0, 10);
@@ -420,16 +451,16 @@ function deriveDailyFromHourly(weatherRaw, tzNowIso) {
 
     // compute daily maxima when data is present
     const winds = hours.map(h => Number(h.w)).filter(Number.isFinite);
-    const uvis  = hours.map(h => Number(h.u)).filter(Number.isFinite);
+    const uvis = hours.map(h => Number(h.u)).filter(Number.isFinite);
     const maxWind = winds.length ? Math.max(...winds) : null;       // kph from Open-Meteo
-    const maxUVI  = uvis.length ? Math.max(...uvis) : null;
+    const maxUVI = uvis.length ? Math.max(...uvis) : null;
 
     return {
       t_min_c: round1(tmin),
       t_max_c: round1(tmax),
       rain_mm: round1(rsum),
       ...(maxWind !== null ? { max_wind_kph: round1(maxWind) } : {}),
-      ...(maxUVI  !== null ? { uv_index_max:  round1(maxUVI) }  : {})
+      ...(maxUVI !== null ? { uv_index_max: round1(maxUVI) } : {})
     };
   }
 
@@ -537,14 +568,18 @@ function saveRecentTip(tipJson) {
   } catch { }
 }
 //TODO: change this section to work with mongoDB = this is just generic/////////////////////////////////////////////////////////
-
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 /** ====================== main method ====================== */
 const Welcome = () => {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [ai, setAi] = useState({ recommendations: [], explanation: "" });
   const [snapshot, setSnapshot] = useState({ areas: [], flat: [] });
+  const [slides, setSlides] = useState([]);
+
   const [debugPrompt, setDebugPrompt] = useState(null);
   const [debugWeather, setDebugWeather] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
@@ -552,7 +587,7 @@ const Welcome = () => {
   async function buildAndSendGardenPlan() {
     setError("");
     setLoading(true);
-
+    
     try {
       // 1 - geolocation
       const coords = await new Promise((resolve, reject) => {
@@ -582,15 +617,15 @@ const Welcome = () => {
         throw new Error("Weather service returned invalid JSON");
       }
       function sanitizeRecentTips(arr) {
-  return (arr || [])
-    .filter(x => x && (x.topic_tag || x.message_norm))
-    .slice(-10);
-}
+        return (arr || [])
+          .filter(x => x && (x.topic_tag || x.message_norm))
+          .slice(-10);
+      }
 
-const weeklyOutlook = Array.isArray(weatherRaw.weekly_outlook) ? weatherRaw.weekly_outlook : [];
-const prevWeekFeatures = weatherRaw.prev_week_features && typeof weatherRaw.prev_week_features === "object"
-  ? weatherRaw.prev_week_features
-  : null;
+      const weeklyOutlook = Array.isArray(weatherRaw.weekly_outlook) ? weatherRaw.weekly_outlook : [];
+      const prevWeekFeatures = weatherRaw.prev_week_features && typeof weatherRaw.prev_week_features === "object"
+        ? weatherRaw.prev_week_features
+        : null;
       // 3 - time and location block
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Jerusalem";
       const isoDate = new Date().toISOString();
@@ -598,7 +633,7 @@ const prevWeekFeatures = weatherRaw.prev_week_features && typeof weatherRaw.prev
 
       // 4 - derive compact weather summary + features for LLM
       const weather_summary = deriveDailyFromHourly(weatherRaw, isoDate);
-      const weather_features = enrichFlagsWithWeeklyBase(computeWeatherFeaturesFromSummary(weather_summary),weeklyOutlook);
+      const weather_features = enrichFlagsWithWeeklyBase(computeWeatherFeaturesFromSummary(weather_summary), weeklyOutlook);
 
       // 5 - load plants before setSnapshot
       const plantsByArea = await loadGardenPlantsByArea();
@@ -628,7 +663,7 @@ const prevWeekFeatures = weatherRaw.prev_week_features && typeof weatherRaw.prev
         recent_tips,
         recent_topics,
         knowledge,
-          ...(prevWeekFeatures ? { prev_week_features: prevWeekFeatures } : {})
+        ...(prevWeekFeatures ? { prev_week_features: prevWeekFeatures } : {})
       });
 
       // debug
@@ -637,131 +672,47 @@ const prevWeekFeatures = weatherRaw.prev_week_features && typeof weatherRaw.prev
       // send
       const tip = await callTip(systemMessage, developerMessage, userPayload);
 
+      const topicSlides = (tip.topics || [])
+        .filter(t => t.include)
+        .map(t => {
+          const isBaseTag = BASE_TAGS.has(t.topic_tag);
+          const photo = isBaseTag
+            ? topicImages[t.topic_tag]
+            : fallbackImg;
 
+          return {
+            photo,
+            text: t.header,
+            body: t.body,
+            ref: `/topics/${t.topic_tag}`,
+          };
+        });
+
+      setAi({ recommendations: [tip], explanation: "", slides: topicSlides });
+      setSlides(topicSlides);
       // 9 - store
       saveRecentTip(tip);
-      setAi({ recommendations: [tip], explanation: "" });
     } catch (e) {
       console.error(e);
       setError(e.message || "Unknown error");
       setAi({ recommendations: [], explanation: "" });
     } finally {
+      sleep(2000);
       setLoading(false);
     }
   }
-  const slides = [
-    {
-      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-      text: "Explore the garden",
-      ref: "/garden"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-      text: "Watering tips",
-      ref: "/tips/watering"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-      text: "Fertilizing guide",
-      ref: "/tips/fertilizing"
-    }, {
-      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-      text: "Explore the garden",
-      ref: "/garden"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-      text: "Watering tips",
-      ref: "/tips/watering"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-      text: "Fertilizing guide",
-      ref: "/tips/fertilizing"
-    }, {
-      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-      text: "Explore the garden",
-      ref: "/garden"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-      text: "Watering tips",
-      ref: "/tips/watering"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-      text: "Fertilizing guide",
-      ref: "/tips/fertilizing"
-    }, {
-      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-      text: "Explore the garden",
-      ref: "/garden"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-      text: "Watering tips",
-      ref: "/tips/watering"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-      text: "Fertilizing guide",
-      ref: "/tips/fertilizing"
-    }, {
-      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-      text: "Explore the garden",
-      ref: "/garden"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-      text: "Watering tips",
-      ref: "/tips/watering"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-      text: "Fertilizing guide",
-      ref: "/tips/fertilizing"
-    }, {
-      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-      text: "Explore the garden",
-      ref: "/garden"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-      text: "Watering tips",
-      ref: "/tips/watering"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-      text: "Fertilizing guide",
-      ref: "/tips/fertilizing"
-    }, {
-      photo: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200",
-      text: "Explore the garden",
-      ref: "/garden"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200",
-      text: "Watering tips",
-      ref: "/tips/watering"
-    },
-    {
-      photo: "https://images.unsplash.com/photo-1496483353456-90997957cf99?q=80&w=1200",
-      text: "Fertilizing guide",
-      ref: "/tips/fertilizing"
-    }
-  ];
-
 
   return (
     <>
-      <Background />
+      <Background onReady={() => setLoading(false)} />
+      {loading && <Loading text="Fetching your garden plan..." />}
       <div style={{ overflowX: "hidden", overflowY: "auto", position: "sticky" }}>
         <div >
-          <TopBar />
+          <TopBar btn1={<MyGardenButton/>} btn2={<MyHelper/>}/>
           <DailyTip
-            header= {ai.recommendations[0]?.daily_tip?.header||""}
-            subheader={ai.recommendations[0]?.daily_tip?.subheader||""}
-            content={ai.recommendations[0]?.daily_tip?.message||""}
+            header={ai.recommendations[0]?.daily_tip?.header || ""}
+            subheader={ai.recommendations[0]?.daily_tip?.subheader || ""}
+            content={ai.recommendations[0]?.daily_tip?.message || ""}
           />
           <SlideShow slidesComponents={slides} title="Ready for the week ahead" />
           {/* <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
@@ -775,7 +726,7 @@ const prevWeekFeatures = weatherRaw.prev_week_features && typeof weatherRaw.prev
 
         
         </div> */}
-          <button
+           <button
             type="button"
             onClick={buildAndSendGardenPlan}
             disabled={loading}
@@ -789,13 +740,13 @@ const prevWeekFeatures = weatherRaw.prev_week_features && typeof weatherRaw.prev
               <pre>{JSON.stringify(debugPrompt.user, null, 2)}</pre>
             </>
           )}
-
+{/*
           {ai.recommendations.length > 0 && (
             <>
               <div>AI response</div>
               <pre>{JSON.stringify(ai.recommendations[0], null, 2)}</pre>
             </>
-          )}
+          )} */}
         </div>
       </div></>);
 }

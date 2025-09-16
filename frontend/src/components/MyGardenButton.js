@@ -3,7 +3,7 @@ import FormButton from "../art/components/buttons.js"
 export default function SignOutButton() {
   const navigate = useNavigate();
   const onMyGarden = () => {
-    navigate("/MyGarden", { replace: true });
+    navigate("/MyGarden", { replace: false });
   };
 
   return (

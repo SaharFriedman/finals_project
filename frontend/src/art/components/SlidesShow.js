@@ -1,8 +1,9 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import "./components.css";
 
 export default function SlideShow({ slidesComponents = [], title = "" }) {
   const railRef = useRef(null);
+  const [selected, setSelected] = useState(null);
 
   const scrollByAmount = (dir = 1) => {
     const el = railRef.current;
@@ -18,19 +19,19 @@ export default function SlideShow({ slidesComponents = [], title = "" }) {
       <button
         className="nf-nav nf-nav-left"
         aria-label="Scroll left"
-        style={{height: "100%"}}
+        style={{ height: "100%" }}
         onClick={() => scrollByAmount(-1)}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#ffffffff"><path d="M405-104 29-481l376-376 39 38-339 338 339 338-39 39Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#ffffffff"><path d="M405-104 29-481l376-376 39 38-339 338 339 338-39 39Z" /></svg>
       </button>
 
       <div className="nf-rail" ref={railRef} tabIndex={0}>
         {slidesComponents.map((item, i) => (
-          <a
+          <div
             className="nf-card"
-            href={item.ref}
             key={i}
             title={item.text || "Open"}
+            onClick={() => setSelected(item)}
           >
             <img
               src={item.photo}
@@ -42,18 +43,32 @@ export default function SlideShow({ slidesComponents = [], title = "" }) {
             />
             <div className="nf-overlay" />
             {item.text ? <div className="nf-caption">{item.text}</div> : null}
-          </a>
+          </div>
         ))}
       </div>
 
       <button
         className="nf-nav nf-nav-right"
         aria-label="Scroll right"
-        style={{height: "100%"}}
+        style={{ height: "100%" }}
         onClick={() => scrollByAmount(1)}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#ffffffff"><path d="m314-105-39-38 339-339-339-338 39-38 376 376-376 377Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#ffffffff"><path d="m314-105-39-38 339-339-339-338 39-38 376 376-376 377Z" /></svg>
       </button>
+      {selected && (
+  <div className="modal-backdrop" onClick={() => setSelected(null)}>
+    <div
+      className="modal-content"
+      onClick={e => e.stopPropagation()} // stop bubbling
+    >
+      <h3>{selected.text}</h3>
+      <p>{selected.body}</p>
+      <button className="modal-close" onClick={() => setSelected(null)}>
+        Close
+      </button>
+    </div>
+  </div>
+)}
     </section>
   );
 }
