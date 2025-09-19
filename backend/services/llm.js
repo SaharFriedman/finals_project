@@ -6,8 +6,22 @@ const MODEL = "gpt-4o-mini";
 const client = new OpenAI({ apiKey: OPENAI_KEY });
 
 function toSingleInput(messages) {
-  return messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
+  // Accept either an array of {role, content} or an object {system, developer, user}
+  if (!Array.isArray(messages)) {
+    const obj = messages || {};
+    messages = [
+      obj.system && { role: "system", content: obj.system },
+      obj.developer && { role: "developer", content: obj.developer },
+      obj.user && { role: "user", content: obj.user },
+    ].filter(Boolean);
+  }
+
+  return messages
+    .filter(m => m && typeof m.content === "string" && m.content.trim() !== "")
+    .map(m => `${String(m.role || "user").toUpperCase()}: ${m.content}`)
+    .join("\n\n");
 }
+
 
 function basicFallback(messages) {
   const last = messages.filter(m => m.role === "user").slice(-1)[0]?.content || "";
@@ -22,7 +36,6 @@ export async function callLLM(messages) {
     const resp = await client.responses.create({
       model: MODEL,
       input,
-      max_output_tokens: 500,
     });
     const text = resp.output_text || "";
     return { text };

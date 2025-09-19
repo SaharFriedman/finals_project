@@ -5,12 +5,19 @@ import { savePhotoFile, listAreaPhotos, deletePhoto } from "../api/photos";
 import { listAreas, createArea, renameArea, deleteArea } from "../api/areas";
 import { listAreaPlants, deletePlant } from "../api/plants";
 import SignOutButton from "../components/SignOutButton";
+import SearchAreaButton from "../components/SearchArea.js";
 import { useMemo, useRef } from "react";
 import BBoxPicker from "../components/BBoxPicker";
 import axios from "axios";
+import Background from "../art/components/Background.js"
+import TopBar from "../art/components/topbar.js";
+import CustomFileUpload from "../art/components/CustomFileUpload.js";
+import SelectAreaDropdown from "../art/components/SelectAreaDropdown";
+import Loading from "../art/components/loading.js";
 const PREDICT_URL = "http://127.0.0.1:2021/predict";
 
 export default function PictureDetect() {
+  const [loading, setLoading] = useState(true);
   // getting all of the photos of the user
   const [savedPhotos, setSavedPhotos] = useState([]);
   // getting all of the plants of the user
@@ -255,8 +262,8 @@ export default function PictureDetect() {
   }
 
   // handling the image after inputing a file
-  const handleFileChange = (e) => {
-    const f = e.target.files?.[0] || null;
+  const handleFileChange = (file) => {
+    const f = file || null;
     if (!f) return;
 
     if (imgURL) URL.revokeObjectURL(imgURL); // revoke old blob
@@ -397,442 +404,411 @@ export default function PictureDetect() {
   }, [savedPlants]);
 
 
+  // bulbul  8--------------------------------------------------------------------------------------------------------------------------------------------------------------D
   return (
-    <div style={{ padding: 16 }}>
-      <h2>YOLO Detection (React + SVG)</h2>
-      <SignOutButton />
+    <div style={{ height: "100vh", width: "100vw"}}>
+      <Background onReady={() => setLoading(false)} />
+      {loading && <Loading text="Fetching your garden plan..." />}
+      <div style={{ position: "fixed", height: "100vh", width: "100vw", overflowY: "auto", paddingBottom:"50px" }}>
+        <TopBar
+          btn1={
+            <SelectAreaDropdown
+              areas={areas}
+              value={selectedAreaId || ""}
+              onChange={(id) => setSelectedAreaId(id)}
+              placeholder="Select area…"
+            />}
+          btn2={<button className="myGardenBtn" onClick={onAddArea}>+ Add Area</button>}
+          btn3={<button className="myGardenBtn" onClick={onRenameArea} disabled={!selectedAreaId}>Rename</button>}
+          btn4={<button className="myGardenBtn" onClick={onDeleteArea} disabled={!selectedAreaId}>Delete</button>} />
+        <div className="container-fluid" style={{ alignItems: "center", justifyContent: "center", display: "flex", marginBottom: "3vh" }}>
+          <div className="TopBar" style={{ maxWidth: "25vw", maxHeight: "8vh", padding: "25px" }}>
 
-      {/* Area controls */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-        <select
-          value={selectedAreaId || ""}
-          onChange={(e) => setSelectedAreaId(e.target.value)}
-        >
-          <option key="__placeholder__" value="" disabled>Select area…</option>
-          {areas.map(a => {
-            const id = a.area_id || a._id || a.id || a.areaId;
-            return (
-              <option key={String(id)} value={String(id)}>
-                {a.name}
-              </option>
-            );
-          })}
-        </select>
-        <button onClick={onAddArea}>+ Add Area</button>
-        <button onClick={onRenameArea} disabled={!selectedAreaId}>Rename</button>
-        <button onClick={onDeleteArea} disabled={!selectedAreaId}>Delete</button>
-      </div>
+            <CustomFileUpload label="upload file" onFileSelect={handleFileChange} />
 
-      {/* Saved photos for this area with overlays */}
-      {savedPhotos.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 12 }}>
-          {savedPhotos.map(p => (
-            <div key={p.photo_id} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 8 }}>
-              <div style={{ fontSize: 12, marginBottom: 4 }}>
-                Photo slot {p.slot} - taken {new Date(p.takenAt).toLocaleString()}
-              </div>
-              <DetectionOverlay
-                src={`http://localhost:12345${p.photo_url}`}
-                natural={{ width: p.width, height: p.height }}
-                detections={plantsByPhoto.get(p.photo_id) || []}
-                maxWidth={480}
-              />
-              <button
-                type="button"
-                style={{ marginTop: 6 }}
-                onClick={() => {
-                  const maxIdx = Math.max(
-                    0,
-                    ...savedPlants.filter(sp => sp.photo_id === p.photo_id).map(sp => sp.idx || 0)
-                  );
-                  setSavedNew({
-                    photo: p,
-                    idx: maxIdx + 1,
-                    label: "",
-                    container: "unknown",
-                    coords: null, // will be set by picker
-                    confidence: 0.99,
-                    notes: "",
-                  });
-                  setPickerSavedOpen(true);
-                }}
-              >
-                Add plant
-              </button>
-              {/* Global picker modal for adding to any saved photo */}
-              {pickerSavedOpen && savedNew?.photo && (
-                <div
-                  style={{
-                    position: "fixed",
-                    inset: 0,
-                    background: "rgba(0,0,0,0.45)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 9999,
-                    padding: 16,
-                  }}
-                  onClick={() => setPickerSavedOpen(false)} // click backdrop closes
-                >
-                  <div
-                    style={{
-                      position: "relative",
-                      background: "#fff",
-                      borderRadius: 8,
-                      padding: 12,
-                      maxWidth: "90vw",
-                      maxHeight: "90vh",
-                      overflow: "auto",
+            <button className="MyGardenSecondMenuButton" onClick={runDetect} disabled={!file} style={{ marginLeft: 8 }}> Detect </button>
+          </div>
+        </div>
+
+        {/* Saved photos for this area with overlays */}
+        {savedPhotos.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 12 }}>
+            {savedPhotos.map(p => (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div className="savedPhotoDisplayerMyGarden" key={p.photo_id} style={{ maxWidth: "95vw", border: '1px solid #ddd', padding: 8, borderRadius: 8 }}>
+                  <div style={{ fontSize: "4vh", color: "white", marginBottom: 4 }}>
+                    Photo slot {p.slot} - taken {new Date(p.takenAt).toLocaleString()}
+                  </div>
+                  <DetectionOverlay
+                    src={`http://localhost:12345${p.photo_url}`}
+                    natural={{ width: p.width, height: p.height }}
+                    detections={plantsByPhoto.get(p.photo_id) || []}
+                    maxWidth={480}
+                  />
+                  <button className="myGardenBtn"
+                    type="button"
+                    style={{ marginTop: 6 }}
+                    onClick={() => {
+                      const maxIdx = Math.max(
+                        0,
+                        ...savedPlants.filter(sp => sp.photo_id === p.photo_id).map(sp => sp.idx || 0)
+                      );
+                      setSavedNew({
+                        photo: p,
+                        idx: maxIdx + 1,
+                        label: "",
+                        container: "unknown",
+                        coords: null, // will be set by picker
+                        confidence: 0.99,
+                        notes: "",
+                      });
+                      setPickerSavedOpen(true);
                     }}
-                    onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
                   >
-                    <div style={{ fontSize: 14, marginBottom: 8 }}>
-                      Pick box - photo slot {savedNew.photo.slot}
-                    </div>
-
-                    <div style={{ position: "relative", display: "inline-block" }}>
-                      <img
-                        ref={savedImgRef}
-                        src={`http://localhost:12345${savedNew.photo.photo_url}`}
-                        alt=""
-                        style={{ display: "block", maxWidth: "80vw", maxHeight: "70vh", width: "100%", height: "auto", border: "1px solid #eee" }}
-                      />
-                      <BBoxPicker
-                        imgRef={savedImgRef}
-                        onConfirm={(coordsPx) => {
-                          // picker returns [x,y,w,h] - convert to [x1,y1,x2,y2] to match your overlay/storage
-                          const [x, y, w, h] = coordsPx.map(Number);
-                          const xyxy = [x, y, x + Math.max(1, w), y + Math.max(1, h)];
-                          setSavedNew(prev => ({ ...prev, coords: xyxy }));
-                          setPickerSavedOpen(false);
-                        }}
-                        onCancel={() => setPickerSavedOpen(false)}
-                      />
-                    </div>
-
-                    <div style={{ marginTop: 10, textAlign: "right" }}>
-                      <button onClick={() => setPickerSavedOpen(false)}>Close</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {savedNew?.photo?.photo_id === p.photo_id && (
-                <div style={{ marginTop: 8, padding: 8, border: "1px solid #ddd", borderRadius: 6 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}>
-                    <div>Idx</div><div>{savedNew.idx}</div>
-                    <div>Label *</div>
-                    <div>
-                      <input
-                        value={savedNew.label}
-                        onChange={e => setSavedNew({ ...savedNew, label: e.target.value })}
-                        placeholder="e.g., Tomato"
-                      />
-                    </div>
-                    <div>Container</div>
-                    <div>
-                      <select
-                        value={savedNew.container}
-                        onChange={e => setSavedNew({ ...savedNew, container: e.target.value })}
-                      >
-                        {CONTAINERS.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    <div>Confidence</div>
-                    <div>
-                      <input
-                        type="number" step="0.01" min="0" max="1"
-                        value={savedNew.confidence}
-                        onChange={e => setSavedNew({ ...savedNew, confidence: e.target.value })}
-                      />
-                    </div>
-                    <div>Coords *</div>
-                    <div>
-                      <code>{savedNew.coords ? JSON.stringify(savedNew.coords) : "(pick on photo above)"}</code>
-                    </div>
-                    <div>Notes</div>
-                    <div>
-                      <input
-                        value={savedNew.notes}
-                        onChange={e => setSavedNew({ ...savedNew, notes: e.target.value })}
-                        placeholder="optional notes"
-                      />
-                    </div>
-                  </div>
-                  <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!savedNew.label.trim()) return alert("Label is required.");
-                        if (!Array.isArray(savedNew.coords)) return alert("Pick coords on the photo.");
-                        const token = localStorage.getItem("token");
-                        const payload = [{
-                          area_id: selectedAreaId,
-                          photo_id: savedNew.photo.photo_id,
-                          idx: savedNew.idx,
-                          label: savedNew.label.trim(),
-                          container: savedNew.container || "unknown",
-                          coordsPx: savedNew.coords, // server expects pixels
-                          confidence: Number(savedNew.confidence) || 0.99,
-                          notes: savedNew.notes || "",
-                          lastWateredAt: null,
-                          lastFertilizedAt: null,
-                          plantedMonth: null,
-                          plantedYear: null,
-                        }];
-                        try {
-                          await axios.post("http://localhost:12345/api/plants", payload, {
-                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
-                          });
-                          // refresh lists
-                          const [photos2, plants2] = await Promise.all([
-                            listAreaPhotos(selectedAreaId),
-                            listAreaPlants(selectedAreaId),
-                          ]);
-                          setSavedPhotos(photos2);
-                          setSavedPlants(plants2);
-                          setSavedNew(null);
-                        } catch (e) {
-                          console.error(e);
-                          alert(e.message || "Save failed");
-                        }
+                    Add plant
+                  </button>
+                  {/* Global picker modal for adding to any saved photo */}
+                  {pickerSavedOpen && savedNew?.photo && (
+                    <div
+                      style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.45)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 9999,
+                        padding: 16,
                       }}
+                      onClick={() => setPickerSavedOpen(false)} // click backdrop closes
                     >
-                      Save plant
-                    </button>
-                    <button type="button" onClick={() => { setSavedNew(null); setPickerSavedOpen(false); }}>
-                      Cancel
-                    </button>
-                  </div>
+                      <div
+                        style={{
+                          position: "relative",
+                          backgroundColor: "transparent",
+                          borderRadius: 8,
+                          padding: 12,
+                          maxWidth: "90vw",
+                          maxHeight: "90vh",
+                          overflow: "auto",
+                        }}
+                        onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
+                      >
+                        <div style={{ fontSize: "3vh", marginBottom: 8 }}>
+                          Pick box - photo slot {savedNew.photo.slot}
+                        </div>
+
+                        <div style={{ position: "relative", display: "inline-block" }}>
+                          <img
+                            ref={savedImgRef}
+                            src={`http://localhost:12345${savedNew.photo.photo_url}`}
+                            alt=""
+                            style={{ display: "block", maxWidth: "80vw", maxHeight: "70vh", width: "100%", height: "auto", border: "1px solid #eee", borderRadius: "10px", aspectRatio: "7/5" }}
+                          />
+                          <BBoxPicker
+                            imgRef={savedImgRef}
+                            onConfirm={(coordsPx) => {
+                              // picker returns [x,y,w,h] - convert to [x1,y1,x2,y2] to match your overlay/storage
+                              const [x, y, w, h] = coordsPx.map(Number);
+                              const xyxy = [x, y, x + Math.max(1, w), y + Math.max(1, h)];
+                              setSavedNew(prev => ({ ...prev, coords: xyxy }));
+                              setPickerSavedOpen(false);
+                            }}
+                            onCancel={() => setPickerSavedOpen(false)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {savedNew?.photo?.photo_id === p.photo_id && (
+                    <div style={{ marginTop: 8, padding: 8, border: "1px solid #ddd", borderRadius: 6 }}>
+                      <div className="formOfInfoOfAddPlantOfSaveOfPhoto" style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}>
+                        <h3>Index</h3><div className="numberOfIndexInfo">{savedNew.idx}</div>
+                        <h3>Label</h3>
+                        <div className="labelOfDataInfo">
+                          <input
+                            value={savedNew.label}
+                            onChange={e => setSavedNew({ ...savedNew, label: e.target.value })}
+                            placeholder="e.g., Tomato"
+                          />
+                        </div>
+                        <h3>Container</h3>
+                        <div className="labelOfContainerInfo">
+                          <select
+                            value={savedNew.container}
+                            onChange={e => setSavedNew({ ...savedNew, container: e.target.value })}
+                          >
+                            {CONTAINERS.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <h3>Coords</h3>
+                        <div className="labelOfContainerInfo">
+                          <code>{savedNew.coords ? JSON.stringify(savedNew.coords) : "(pick on photo above)"}</code>
+                        </div>
+                        <h3>Notes</h3>
+                        <div className="labelOfContainerInfo">
+                          <input
+                            value={savedNew.notes}
+                            onChange={e => setSavedNew({ ...savedNew, notes: e.target.value })}
+                            placeholder="optional notes"
+                          />
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "center", paddingTop: "5px", paddingBottom: "5px" }}>
+                        <button className="addPlantAreaBtnInfo"
+                          type="button"
+                          onClick={async () => {
+                            if (!savedNew.label.trim()) return alert("Label is required.");
+                            if (!Array.isArray(savedNew.coords)) return alert("Pick coords on the photo.");
+                            const token = localStorage.getItem("token");
+                            const payload = [{
+                              area_id: selectedAreaId,
+                              photo_id: savedNew.photo.photo_id,
+                              idx: savedNew.idx,
+                              label: savedNew.label.trim(),
+                              container: savedNew.container || "unknown",
+                              coordsPx: savedNew.coords, // server expects pixels
+                              confidence: Number(savedNew.confidence) || 0.99,
+                              notes: savedNew.notes || "",
+                              lastWateredAt: null,
+                              lastFertilizedAt: null,
+                              plantedMonth: null,
+                              plantedYear: null,
+                            }];
+                            try {
+                              await axios.post("http://localhost:12345/api/plants", payload, {
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+                              });
+                              // refresh lists
+                              const [photos2, plants2] = await Promise.all([
+                                listAreaPhotos(selectedAreaId),
+                                listAreaPlants(selectedAreaId),
+                              ]);
+                              setSavedPhotos(photos2);
+                              setSavedPlants(plants2);
+                              setSavedNew(null);
+                            } catch (e) {
+                              console.error(e);
+                              alert(e.message || "Save failed");
+                            }
+                          }}
+                        >
+                          Save plant
+                        </button>
+                        <button className="addPlantAreaBtnInfo" type="button" onClick={() => { setSavedNew(null); setPickerSavedOpen(false); }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            ))}
+          </div>
+        )}
 
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Saved plants for this area */}
-      {savedPlants.length > 0 && (
-        <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
-          <thead>
-            <tr>
-              <th>Species</th>
-              <th>Photo slot</th>
-              <th>#</th>
-              <th>Label</th>
-              <th>Container</th>
-              <th>Watered</th>
-              <th>Fertilized</th>
-              <th>Planted</th>
-              <th>Notes</th>
-              <th>Delete</th>
-            </tr>
-          </thead>
-          <tbody>
-            {/* Saved plants table */}
-            {savedPlants.map(r => {
-              const photo = savedPhotos.find(p => p.photo_id === r.photo_id);
-              return (
-                <tr key={r.plant_id}>
-                  <td>{r.species_label || ''}</td>
-                  <td>{photo ? photo.slot : ''}</td>
-                  <td>{r.idx}</td>
-                  <td>{r.label}</td>
-                  <td>{r.container}</td>
-                  <td>{r.lastWateredAt ? new Date(r.lastWateredAt).toLocaleString() : ''}</td>
-                  <td>{r.lastFertilizedAt ? new Date(r.lastFertilizedAt).toLocaleString() : ''}</td>
-                  <td>{r.plantedMonth && r.plantedYear ? `${String(r.plantedMonth).padStart(2, '0')}/${r.plantedYear}` : ''}</td>
-                  <td>{r.notes || ''}</td>
-                  <td><button type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}> Delete</button></td>
+        {/* Saved plants for this area */}
+        {savedPlants.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100vw",border:"none",paddingTop:"3vh" }}>
+            <table className="TableOfSavedPlants" border="none" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
+              <thead>
+                <tr>
+                  <th>Species</th>
+                  <th>Photo slot</th>
+                  <th>#</th>
+                  <th>Label</th>
+                  <th>Container</th>
+                  <th>Watered</th>
+                  <th>Fertilized</th>
+                  <th>Planted</th>
+                  <th>Notes</th>
+                  <th>Delete</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+              </thead>
+              <tbody>
+                {/* Saved plants table */}
+                {savedPlants.map(r => {
+                  const photo = savedPhotos.find(p => p.photo_id === r.photo_id);
+                  return (
+                    <tr key={r.plant_id}>
+                      <td>{r.species_label || ''}</td>
+                      <td>{photo ? photo.slot : ''}</td>
+                      <td>{r.idx}</td>
+                      <td>{r.label}</td>
+                      <td>{r.container}</td>
+                      <td>{r.lastWateredAt ? new Date(r.lastWateredAt).toLocaleString() : ''}</td>
+                      <td>{r.lastFertilizedAt ? new Date(r.lastFertilizedAt).toLocaleString() : ''}</td>
+                      <td>{r.plantedMonth && r.plantedYear ? `${String(r.plantedMonth).padStart(2, '0')}/${r.plantedYear}` : ''}</td>
+                      <td>{r.notes || ''}</td>
+                      <td><button className="deleteBtnOfSavedTable" type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}> Delete</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      {/* File + detect */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onClick={e => { e.currentTarget.value = ""; }}   // lets you pick the same file again
-        onChange={handleFileChange}
-      />      <button onClick={runDetect} disabled={!file} style={{ marginLeft: 8 }}>
-        Detect
-      </button>
-      <button onClick={onAddNewPlant} disabled={!file} style={{ marginLeft: 8 }}>
-        Add new plant
-      </button>
-      {/* Image + overlay */}
-      {imgURL ? (
-        <div style={{ marginTop: 12 }}>
-          <DetectionOverlay
-            key={imgURL}                 // force remount on new image
-            src={imgURL}
-            natural={natural}
-            detections={rows}
-            maxWidth={720}
-          />
-        </div>
-      ) : null}
 
-      {/* Manual box picker overlay over the same photo */}
-      {pickerOpen && imgURL && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-            padding: 16,
-          }}
-          onClick={() => setPickerOpen(false)} // click backdrop to close
-        >
+
+        {/* Image + overlay */}
+        {imgURL ? (
+          <div style={{ marginTop: 12,alignItems:"center",justifyContent:"center",display:"flex" ,paddingBottom:"3vh"}}>
+            <DetectionOverlay
+              key={imgURL}                 // force remount on new image
+              src={imgURL}
+              natural={natural}
+              detections={rows}
+              maxWidth={720}
+            />
+          </div>
+        ) : null}
+
+        {/* Manual box picker overlay over the same photo */}
+        {pickerOpen && imgURL && (
           <div
             style={{
-              position: "relative",
-              background: "#fff",
-              borderRadius: 8,
-              padding: 12,
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-              overflow: "auto",
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+              padding: 16,
             }}
-            onClick={(e) => e.stopPropagation()} // do not close when clicking inside
+            onClick={() => setPickerOpen(false)} // click backdrop to close
           >
-            <div style={{ fontSize: 14, marginBottom: 8 }}>
-              Pick box - current uploaded photo
-            </div>
+            <div
+              style={{
+                position: "relative",
+                background: "#fff",
+                borderRadius: 8,
+                padding: 12,
+                maxWidth: "90vw",
+                maxHeight: "90vh",
+                overflow: "auto",
+              }}
+              onClick={(e) => e.stopPropagation()} // do not close when clicking inside
+            >
+              <div style={{ fontSize: 14, marginBottom: 8 }}>
+                Pick box - current uploaded photo
+              </div>
 
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <img
-                ref={imgPickRef}
-                src={imgURL}
-                alt=""
-                style={{
-                  display: "block",
-                  maxWidth: "80vw",
-                  maxHeight: "70vh",
-                  width: "100%",
-                  height: "auto",
-                  border: "1px solid #eee",
-                }}
-              />
-              <BBoxPicker
-                imgRef={imgPickRef}
-                onConfirm={onCoordsPicked}     // you already convert xywh -> xyxy inside this
-                onCancel={() => setPickerOpen(false)}
-              />
-            </div>
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <img
+                  ref={imgPickRef}
+                  src={imgURL}
+                  alt=""
+                  style={{
+                    display: "block",
+                    maxWidth: "80vw",
+                    maxHeight: "70vh",
+                    width: "100%",
+                    height: "auto",
+                    border: "1px solid #eee",
+                  }}
+                />
+                <BBoxPicker
+                  imgRef={imgPickRef}
+                  onConfirm={onCoordsPicked}     // you already convert xywh -> xyxy inside this
+                  onCancel={() => setPickerOpen(false)}
+                />
+              </div>
 
-            <div style={{ marginTop: 10, textAlign: "right" }}>
-              <button onClick={() => setPickerOpen(false)}>Close</button>
+              <div style={{ marginTop: 10, textAlign: "right" }}>
+                <button onClick={() => setPickerOpen(false)}>Close</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {newRow && (
-        <div style={{ marginTop: 12, padding: 12, border: "1px solid #ddd", maxWidth: 820 }}>
-          <h3>Add a new plant</h3>
-          <table cellPadding={6} style={{ borderCollapse: "collapse" }}>
-            <tbody>
-              <tr>
-                <td>Idx</td>
-                <td>{newRow.idx}</td>
-              </tr>
-              <tr>
-                <td>Label *</td>
-                <td>
-                  <input
-                    value={newRow.label}
-                    onChange={e => setNewRow({ ...newRow, label: e.target.value })}
-                    placeholder="e.g., Tomato"
-                  />
-                </td>
-              </tr>
-              <tr>
-                <td>Container</td>
-                <td>
-                  <select
-                    value={newRow.container}
-                    onChange={e => setNewRow({ ...newRow, container: e.target.value })}
-                  >
-                    {CONTAINERS.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </td>
-              </tr>
-              <tr>
-                <td>Confidence</td>
-                <td>
-                  <input
-                    type="number" step="0.01" min="0" max="1"
-                    value={newRow.confidence}
-                    onChange={e => setNewRow({ ...newRow, confidence: e.target.value })}
-                  />
-                </td>
-              </tr>
-              <tr>
-                <td>Coords *</td>
-                <td>
-                  <code>{newRow.coords ? JSON.stringify(newRow.coords) : "(pick on photo)"}</code>
-                  <div style={{ marginTop: 6 }}>
-                    <button type="button" onClick={onPickCoords}>Pick on photo</button>
-                  </div>
-                  <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-                    Click and drag on the image to draw a rectangle. We store [x, y, w, h] in original pixels.
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>Notes</td>
-                <td>
-                  <input
-                    value={newRow.notes}
-                    onChange={e => setNewRow({ ...newRow, notes: e.target.value })}
-                    placeholder="optional notes"
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        )}
+        {newRow && (
+          <div style={{ marginTop: 12, padding: 12, border: "1px solid #ddd", maxWidth: 820 }}>
+            <h3>Add a new plant</h3>
+            <table cellPadding={6} style={{ borderCollapse: "collapse" }}>
+              <tbody>
+                <tr>
+                  <td>Idx</td>
+                  <td>{newRow.idx}</td>
+                </tr>
+                <tr>
+                  <td>Label *</td>
+                  <td>
+                    <input
+                      value={newRow.label}
+                      onChange={e => setNewRow({ ...newRow, label: e.target.value })}
+                      placeholder="e.g., Tomato"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td>Container</td>
+                  <td>
+                    <select
+                      value={newRow.container}
+                      onChange={e => setNewRow({ ...newRow, container: e.target.value })}
+                    >
+                      {CONTAINERS.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Confidence</td>
+                  <td>
+                    <input
+                      type="number" step="0.01" min="0" max="1"
+                      value={newRow.confidence}
+                      onChange={e => setNewRow({ ...newRow, confidence: e.target.value })}
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td>Coords *</td>
+                  <td>
+                    <code>{newRow.coords ? JSON.stringify(newRow.coords) : "(pick on photo)"}</code>
+                    <div style={{ marginTop: 6 }}>
+                      <button type="button" onClick={onPickCoords}>Pick on photo</button>
+                    </div>
+                    <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                      Click and drag on the image to draw a rectangle. We store [x, y, w, h] in original pixels.
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Notes</td>
+                  <td>
+                    <input
+                      value={newRow.notes}
+                      onChange={e => setNewRow({ ...newRow, notes: e.target.value })}
+                      placeholder="optional notes"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-          <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-            <button type="button" onClick={onSaveNewRow}>Save to table</button>
-            <button type="button" onClick={onCancelNewRow}>Cancel</button>
+            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+              <button type="button" onClick={onSaveNewRow}>Save to table</button>
+              <button type="button" onClick={onCancelNewRow}>Cancel</button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Table + Save */}
-      {rows.length > 0 && (
-        <>
-          <PlantTable rows={rows} setRows={setRows} containerOptions={CONTAINERS} />
-          <div style={{ marginTop: 12 }}>
-            <button onClick={handleSavePhotoAndPlants}>
-              Save Photo + Plants
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Show saved photo (from server) */}
-      {photoMeta?.photo_url && (
-        <div style={{ marginTop: 16 }}>
-          <p>Saved photo (slot {photoMeta.slot}):</p>
-          <img
-            src={`http://localhost:12345${photoMeta.photo_url}`}
-            alt="Saved garden"
-            style={{ maxWidth: 480, border: "1px solid #ddd" }}
-          />
-        </div>
-      )}
+        {/* Table + Save */}
+        {rows.length > 0 && (
+          <>
+            <PlantTable rows={rows} setRows={setRows} containerOptions={CONTAINERS} />
+            <div style={{ marginTop: 12 }}>
+              <button className="myGardenBtn" style={{minHeight:"60px"}} onClick={handleSavePhotoAndPlants}>
+                Save Photo + Plants
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-
+import "../art/components/components.css"
 /**
  * BBoxPicker - overlays a canvas on top of the displayed <img> so the user can
  * click and drag a rectangle. It returns coordsPx in ORIGINAL pixels: [x, y, w, h].
@@ -63,7 +63,7 @@ export default function BBoxPicker({ imgRef, onConfirm, onCancel, initial }) {
       // clear the selected box area to highlight it
       ctx.clearRect(rect.x, rect.y, rect.w, rect.h);
       // drawing the outline of the bbox
-      ctx.strokeStyle = "#00ff00";
+      ctx.strokeStyle = "#ffa620ff";
       ctx.lineWidth = 2;
       ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
     }
@@ -93,6 +93,7 @@ export default function BBoxPicker({ imgRef, onConfirm, onCancel, initial }) {
   }
 
   return (
+    <div>
     <div style={{
       position: "absolute",
       inset: 0,
@@ -107,12 +108,13 @@ export default function BBoxPicker({ imgRef, onConfirm, onCancel, initial }) {
         onMouseMove={move}
         onMouseUp={end}
         onMouseLeave={end}
-        style={{ display: "block", cursor: "crosshair" }}
+        style={{ display: "block", cursor: "crosshair",}}
       />
-      <div style={{ position: "absolute", bottom: 10, display: "flex", gap: 8 }}>
-        <button onClick={confirm} disabled={!rect}>OK</button>
-        <button onClick={onCancel}>Cancel</button>
-      </div>
     </div>
+            <div style={{ position: "absolute", bottom: 10, display: "flex", gap: 8,justifyContent:"center",alignItems:"center" ,width:"100%"}}>
+        <button className="boxPickerBtn" onClick={confirm} disabled={!rect}>OK</button>
+        <button className="boxPickerBtn" onClick={onCancel}>Cancel</button>
+      </div>
+ </div>
   );
 }

@@ -12,13 +12,13 @@ export default function DetectionOverlay({ src, natural, detections, maxWidth = 
   }, [natural, maxWidth]);
 
   return (
-    <div style={{ position: "relative", width: display.width, height: display.height, background: "#111" }}>
+    <div style={{ position: "relative", width: display.width, height: display.height, background: "transparent" , display: "flex",paddingLeft:"15px",  justifyContent: "center", alignItems:"center"}}>
       {src && (
         <>
           <img
             src={src}
             alt="uploaded"
-            style={{ width: display.width, height: display.height, objectFit: "contain", display: "block" }}
+            style={{ width: display.width, height: display.height, objectFit: "contain", display: "block" ,borderRadius:"15px"}}
           />
           <svg
             width={display.width}

@@ -8,6 +8,53 @@ import requests_cache
 from retry_requests import retry
 from astral import LocationInfo
 from astral.sun import sun
+from datetime import datetime, timezone, timedelta
+
+def compute_prev_week_features(hourly):
+    times = hourly["time"]
+    temps = hourly["temperature_2m"]
+    precs = hourly["precipitation"]
+    ws    = hourly.get("windspeed_10m", [])
+
+    # bucket by day
+    daily = {}
+    for i, ts in enumerate(times):
+        day = ts[:10]
+        daily.setdefault(day, {"temps": [], "precs": [], "winds": []})
+        daily[day]["temps"].append(temps[i])
+        daily[day]["precs"].append(precs[i])
+        if ws: daily[day]["winds"].append(ws[i])
+
+    # choose the 7 calendar days strictly before today
+    today = datetime.now(timezone.utc).date()
+    prev7 = []
+    for d in sorted(daily.keys()):
+        dd = datetime.fromisoformat(d).date()
+        if dd < today:
+            prev7.append(d)
+    prev7 = prev7[-7:]  # last 7 past days
+
+    if not prev7:
+        return None
+
+    tmaxes = []
+    tmins  = []
+    total_rain = 0.0
+    windy_days = 0
+    for d in prev7:
+        tmaxes.append(max(daily[d]["temps"]))
+        tmins.append(min(daily[d]["temps"]))
+        total_rain += sum(daily[d]["precs"])
+        if ws and daily[d]["winds"]:
+            if max(daily[d]["winds"]) >= 35:  # kph threshold
+                windy_days += 1
+
+    return {
+        "total_rain_mm": round(total_rain, 1),
+        "avg_tmax_c": round(sum(tmaxes) / len(tmaxes), 1),
+        "avg_tmin_c": round(sum(tmins) / len(tmins), 1),
+        "windy_days": windy_days
+    }
 
 def get_coordinates(location_name):
     geolocator = Nominatim(user_agent="weather_app")
@@ -15,7 +62,47 @@ def get_coordinates(location_name):
     if not location:
         raise ValueError(f"Location '{location_name}' not found")
     return location.latitude, location.longitude
+def summarize_next_week(data):
+    times = data["hourly"]["time"]
+    temps = data["hourly"]["temperature_2m"]
+    precs = data["hourly"]["precipitation"]
+    ws = data["hourly"].get("windspeed_10m", [])
+    uvi = data["hourly"].get("uv_index", [])
 
+    daily = {}
+    for i, ts in enumerate(times):
+        day = ts[:10]
+        daily.setdefault(day, {"temps": [], "precs": [], "winds": [], "uvis": []})
+        daily[day]["temps"].append(temps[i])
+        daily[day]["precs"].append(precs[i])
+        if ws: daily[day]["winds"].append(ws[i])
+        if uvi: daily[day]["uvis"].append(uvi[i])
+
+    today_ymd = datetime.now(timezone.utc).date().isoformat()
+
+    out = []
+    for day in sorted(daily.keys()):
+      if day < today_ymd:
+          continue
+      v = daily[day]
+      tmin = min(v["temps"])
+      tmax = max(v["temps"])
+      rain = sum(v["precs"])
+      max_wind = max(v["winds"]) if v["winds"] else None
+      max_uvi  = max(v["uvis"])  if v["uvis"]  else None
+      rec = {
+          "date": day,
+          "t_min_c": round(tmin, 1),
+          "t_max_c": round(tmax, 1),
+          "rain_mm": round(rain, 1)
+      }
+      if max_wind is not None:
+          rec["max_wind_kph"] = round(max_wind, 1)
+      if max_uvi is not None:
+          rec["uv_index_max"] = round(max_uvi, 1)
+      out.append(rec)
+
+    return out[:7]
 def get_weather_forecast(lat, lon):
     cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
     retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
@@ -23,12 +110,14 @@ def get_weather_forecast(lat, lon):
 
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
-        "latitude": lat,
-        "longitude": lon,
-        "hourly": ["temperature_2m", "precipitation"],
-        "timezone": "auto",
-        "forecast_days": 6
+    "latitude": lat,
+    "longitude": lon,
+    "hourly": ["temperature_2m", "precipitation", "windspeed_10m", "uv_index"],
+    "timezone": "auto",
+    "forecast_days": 7,
+    "past_days": 7
     }
+
 
     responses = openmeteo.weather_api(url, params=params)
     response = responses[0]
@@ -48,7 +137,8 @@ def get_weather_forecast(lat, lon):
     )}
     hourly_data["temperature_2m"] = hourly.Variables(0).ValuesAsNumpy()
     hourly_data["precipitation"] = hourly.Variables(1).ValuesAsNumpy()
-
+    hourly_data["windspeed_10m"] = hourly.Variables(2).ValuesAsNumpy()
+    hourly_data["uv_index"] = hourly.Variables(3).ValuesAsNumpy()
     hourly_dataframe = pd.DataFrame(data=hourly_data)
 
     sun_data = calculate_sun_position(lat, lon, timezone_str, 6)
@@ -65,7 +155,9 @@ def get_weather_forecast(lat, lon):
         "hourly": {
             "time": hourly_dataframe["time"].astype(str).tolist(),
             "temperature_2m": hourly_dataframe["temperature_2m"].tolist(),
-            "precipitation": hourly_dataframe["precipitation"].tolist()
+            "precipitation": hourly_dataframe["precipitation"].tolist(),
+            "windspeed_10m": hourly_dataframe["windspeed_10m"].tolist(),  # add this
+            "uv_index": hourly_dataframe["uv_index"].tolist()              # and this
         },
         "daily": sun_data
     }
@@ -170,13 +262,17 @@ def start(location_name,flag):
         lat,lon = location_name.split(",")
     forecast_data = get_weather_forecast(lat, lon)
     summarized = summarize_forecast(forecast_data)
+    weekly_outlook = summarize_next_week(forecast_data)
+    prev_week_features = compute_prev_week_features(forecast_data["hourly"])
+
     output = {
         "coordinates": forecast_data["coordinates"],
         "hourly": forecast_data["hourly"],
         "daily_sun_data": forecast_data["daily"],
-        "daily_summary": summarized
+        "daily_summary": summarized,
+        "weekly_outlook": weekly_outlook,
+        "prev_week_features": prev_week_features
     }
-
     safe_output = convert_bytes(output)
     json_output = json.dumps(safe_output, indent=4)
     return json_output

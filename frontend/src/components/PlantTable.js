@@ -1,3 +1,4 @@
+import "../art/components/components.css"
 // a function to render the plant table and functionality (dates logic e.g)
 export default function PlantTable({ rows, setRows }) {
   const remove = (i) => setRows(prev => prev.filter((_, idx) => idx !== i));
@@ -14,7 +15,8 @@ export default function PlantTable({ rows, setRows }) {
   const todayStr = ymd(today);
   const monthMax = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   return (
-    <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%", marginTop: 12 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100vw",border:"none",paddingTop:"3vh" }}>
+    <table className="TableOfSavedPlants" border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%", marginTop: 12 }}>
       <thead>
         <tr>
           <th>#</th>
@@ -33,11 +35,11 @@ export default function PlantTable({ rows, setRows }) {
           <tr key={r.idx ?? i}>
             <td style={{ textAlign: "center", width: 40 }}>{r.idx}</td>
             {/* label */}
-            <td>
+            <td className="labelOfDataInfo">
               <input value={r.label || ""} onChange={e => update(i, { label: e.target.value })} />
             </td>
             {/* container */}
-            <td>
+            <td className="labelOfContainerInfo">
               <select
                 value={r.container || "unknown"}
                 onChange={e => update(i, { container: e.target.value })}
@@ -51,7 +53,7 @@ export default function PlantTable({ rows, setRows }) {
               </select>
             </td>
             {/* last watered at */}
-            <td>
+            <td className="labelOfContainerInfo">
               <input
                 type="date"
                 max={todayStr}
@@ -64,7 +66,7 @@ export default function PlantTable({ rows, setRows }) {
               />
             </td>
             {/* last fertilized at */}
-            <td>
+            <td className="labelOfContainerInfo">
               <input
                 type="date"
                 max={todayStr}
@@ -77,7 +79,7 @@ export default function PlantTable({ rows, setRows }) {
               />
             </td>
             {/* last planted at */}
-            <td>
+            <td className="labelOfContainerInfo">
               <input
                 type="month"
                 max={monthMax}
@@ -96,16 +98,17 @@ export default function PlantTable({ rows, setRows }) {
               />
             </td>
             {/* notes */}
-            <td>
+            <td className="labelOfContainerInfo">
               <input value={r.notes || ""} onChange={e => update(i, { notes: e.target.value })} />
             </td>
             {/* delete */}
-            <td>
-              <button type="button" onClick={() => remove(i)}>Delete</button>
+            <td >
+              <button className="deleteBtnOfSavedTable" type="button" onClick={() => remove(i)}>Delete</button>
             </td>
           </tr>
         ))}
       </tbody>
     </table>
+    </div>
   );
 }

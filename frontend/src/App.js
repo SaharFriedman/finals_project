@@ -61,8 +61,6 @@ function App() {
         <Routes>
           {/* Public */}
           <Route path="/" element={<Home />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/signin" element={<SignIn setToken={setToken} />} />
           {/* Private */}
           <Route path="/MyGarden" element={<RequireAuth><MyGarden /></RequireAuth>} />
           <Route path="/welcome" element={<RequireAuth><WelcomePage /></RequireAuth>} />
