@@ -1,30 +1,30 @@
-import React, { useState } from "react";
+import React  from "react";
 import "./components.css";
 
-export default function CustomFileUpload({
-  label = "zibi",        // default button label
-  onFileSelect,              // callback when file selected
-}) {
-
+export default function CustomFileUpload({ label = "upload a file", onFileSelect }) {
+  const fileInputRef = React.useRef(null);
 
   const handleChange = (e) => {
     const file = e.target.files[0];
-    if (onFileSelect) {
-      onFileSelect(file || null);
-    }
+    if (onFileSelect) onFileSelect(file || null);
   };
 
   return (
-    <div className="custom-file-upload">
-      <label className="upload-button">
+    <div>
+      <button
+        type="button"
+        className="MyGardenSecondMenuButton"
+        onClick={() => fileInputRef.current?.click()}
+      >
         {label}
- <input
-   type="file"
-   accept="image/*"   // only allow images
-   hidden
-   onChange={handleChange}
- />
-      </label>
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={handleChange}
+      />
     </div>
   );
 }

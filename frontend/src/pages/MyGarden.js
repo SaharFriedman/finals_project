@@ -4,9 +4,7 @@ import PlantTable from "../components/PlantTable";
 import { savePhotoFile, listAreaPhotos, deletePhoto } from "../api/photos";
 import { listAreas, createArea, renameArea, deleteArea } from "../api/areas";
 import { listAreaPlants, deletePlant } from "../api/plants";
-import SignOutButton from "../components/SignOutButton";
-import SearchAreaButton from "../components/SearchArea.js";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import BBoxPicker from "../components/BBoxPicker";
 import axios from "axios";
 import Background from "../art/components/Background.js"
@@ -45,9 +43,42 @@ export default function PictureDetect() {
     setPickerOpen(false);
     setPickerSavedOpen(false);
     setSavedNew(null);
-    setPhotoMeta(null);
     // clear the actual file input so same-file selection will trigger onChange
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+  async function waterAllToday() {
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      // run all updates in parallel
+      await Promise.all(
+        savedPlants.map((p) =>
+          updatePlantDates(p.plant_id, { lastWateredAt: today })
+        )
+      );
+      // refresh after done
+      const plants = await listAreaPlants(selectedAreaId);
+      setSavedPlants(plants);
+    } catch (err) {
+      console.error("Failed to water all:", err);
+      alert("Failed to mark all as watered today");
+    }
+  }
+  async function fertilizedAllToday() {
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      // run all updates in parallel
+      await Promise.all(
+        savedPlants.map((p) =>
+          updatePlantDates(p.plant_id, { lastFertilizedAt: today })
+        )
+      );
+      // refresh after done
+      const plants = await listAreaPlants(selectedAreaId);
+      setSavedPlants(plants);
+    } catch (err) {
+      console.error("Failed to water all:", err);
+      alert("Failed to mark all as watered today");
+    }
   }
   // changing the name of the list to work with several methods of the API w.o relaying on the server 
   function normalizeAreas(list) {
@@ -65,36 +96,9 @@ export default function PictureDetect() {
   // rows of the table of plants
   const [rows, setRows] = useState([]);
 
-  const [photoMeta, setPhotoMeta] = useState(null);
 
   const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
 
-  /*this is all the functions required to activate a new plant and bbox picker for it*/
-  // next idx inside the current rows table
-  const nextIdx = useMemo(() => {
-    const maxInRows = rows.reduce((m, r) => Math.max(m, Number(r.idx || 0)), 0);
-    return maxInRows + 1;
-  }, [rows]);
-
-  function onAddNewPlant() {
-    if (!file || !imgURL) {
-      // need to refactor
-      alert("Choose a photo first.");
-      return;
-    }
-    setNewRow({
-      idx: nextIdx,
-      label: "",
-      container: "unknown",
-      coords: null,              // will be set by bbox picker
-      confidence: 1,
-      notes: "",
-      lastWateredAt: null,
-      lastFertilizedAt: null,
-      plantedMonth: null,
-      plantedYear: null,
-    });
-  }
 
   function onPickCoords() {
     if (!imgURL) {
@@ -131,21 +135,6 @@ export default function PictureDetect() {
     );
     return res.data;
   }
-  function ymdToday() { return new Date().toISOString().slice(0, 10); }
-
-  async function waterToday(plantId) {
-    await updatePlantDates(plantId, { lastWateredAt: ymdToday() });
-    // refresh saved plants
-    const plants = await listAreaPlants(selectedAreaId);
-    setSavedPlants(plants);
-  }
-
-  async function fertilizeToday(plantId) {
-    await updatePlantDates(plantId, { lastFertilizedAt: ymdToday() });
-    const plants = await listAreaPlants(selectedAreaId);
-    setSavedPlants(plants);
-  }
-
   /**************************** this is the end for helpers***************************************************/
 
   // this useEffect is handling areas data
@@ -173,7 +162,6 @@ export default function PictureDetect() {
     setPickerOpen(false);
     setNewRow(null);
     setRows([]);
-    setPhotoMeta(null);
 
     // revoke old object URL and clear file/image
     setFile(null);
@@ -257,7 +245,6 @@ export default function PictureDetect() {
       setRows([]);
       setFile(null);
       setImgURL("");
-      setPhotoMeta(null);
     } catch (e) {
       console.error(e);
       alert(e.message || "Delete area failed");
@@ -300,7 +287,6 @@ export default function PictureDetect() {
     probe.src = url;
 
     setRows([]);
-    setPhotoMeta(null);
   };
 
   // handling to delete post saved plants
@@ -359,14 +345,12 @@ export default function PictureDetect() {
       if (!rows.length) return alert("No plants to save.");
       // add a date to the 
       const takenAt = new Date().toISOString();
-      const { photo_id, photo_url, slot } = await savePhotoFile({
+      const { photo_id, slot } = await savePhotoFile({
         file,
         areaId: selectedAreaId,
         takenAt,
       });
       // updating the photo meta data 
-      setPhotoMeta({ photo_id, photo_url, slot });
-
       const payload = rows.map(r => ({
         area_id: selectedAreaId,
         photo_id,
@@ -640,8 +624,22 @@ export default function PictureDetect() {
                   <th>#</th>
                   <th>Label</th>
                   <th>Container</th>
-                  <th>Watered</th>
-                  <th>Fertilized</th>
+                  <th>
+                    <button
+                      className="myGardenBtnTiny"
+                      type="button"
+                      onClick={waterAllToday}
+                    >
+                      Watered date
+                    </button>
+                  </th>
+                  <th>                <button
+                    className="myGardenBtnTiny"
+                    type="button"
+                    onClick={fertilizedAllToday}
+                  >
+                    Fertilized date
+                  </button></th>
                   <th>Planted</th>
                   <th>Notes</th>
                 </tr>
@@ -658,8 +656,8 @@ export default function PictureDetect() {
                       <td>{r.container}</td>
 
                       {/* Watered - show last date, allow set by date picker, plus Today button */}
-                      <td>
-                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <td className="labelOfContainerInfo">
+                        <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "center" }}>
                           <input
                             type="date"
                             max={new Date().toISOString().slice(0, 10)}
@@ -671,20 +669,12 @@ export default function PictureDetect() {
                               setSavedPlants(plants);
                             }}
                           />
-                          <button
-                            className="myGardenBtn"
-                            type="button"
-                            onClick={() => waterToday(r.plant_id)}
-                            title="Set watered to today"
-                          >
-                            Water today
-                          </button>
                         </div>
                       </td>
 
                       {/* Fertilized - same pattern */}
-                      <td>
-                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <td className="labelOfContainerInfo">
+                        <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "center" }}>
                           <input
                             type="date"
                             max={new Date().toISOString().slice(0, 10)}
@@ -696,14 +686,6 @@ export default function PictureDetect() {
                               setSavedPlants(plants);
                             }}
                           />
-                          <button
-                            className="myGardenBtn"
-                            type="button"
-                            onClick={() => fertilizeToday(r.plant_id)}
-                            title="Set fertilized to today"
-                          >
-                            Fertilize today
-                          </button>
                         </div>
                       </td>
 
@@ -740,6 +722,14 @@ export default function PictureDetect() {
           </div>
         )}
 
+<div className="container-fluid" style={{ alignItems: "center", justifyContent: "center", display: "flex", marginBottom: "3vh" }}>
+          <div className="TopBar" style={{ maxWidth: "25vw", maxHeight: "8vh", padding: "25px" }}>
+
+            <CustomFileUpload label="upload file" onFileSelect={handleFileChange} />
+
+            <button className="MyGardenSecondMenuButton" onClick={runDetect} disabled={!file} style={{ marginLeft: 8 }}> Detect </button>
+          </div>
+        </div>
 
 
         {/* Image + overlay */}
