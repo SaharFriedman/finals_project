@@ -7,6 +7,7 @@ import Background from "../art/components/Background.js"
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import DOMPurify from "dompurify";
+import TopBar from "../art/components/topbar.js";
 
 function SafeMarkdown({ text }) {
   // react-markdown does not execute HTML by default. If you ever allow HTML, sanitize it.
@@ -68,6 +69,9 @@ export default function MyHelper() {
     <div>
       <Background onReady={() => setLoading(false)} />
       {loading && <Loading text="your bot is planning to destroy humanity..." />}
+    <div style={{ position: "sticky", top: 0, zIndex: 1000 }}>
+      <TopBar />
+    </div>
       <div className="botBaseContainer" style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "16px", height: "calc(100vh - 80px)", padding: "16px", position: "absolute" }}>
         <aside style={{ overflow: "auto", borderRight: "1px solid #ffffffff", paddingRight: 12 }}>
           <h2>My plants</h2>
