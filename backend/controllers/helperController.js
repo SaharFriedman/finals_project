@@ -55,7 +55,7 @@ exports.chat = async (req, res) => {
     // Build a constrained prompt with instruction to return optional JSON block
     const sys = `You are My Helper - a personal garden assistant. 
 You answer using the user's private garden data. Never invent dates. 
-Avoid repeating the same advice within recent history if already given. 
+Avoid repeating the same advice within recent history if already given. only answer relevant questions about gardening and garden data. if you need any more context use the tools provided. 
 `;
 
     // recent messages with a limit of 8 recent commands
