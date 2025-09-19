@@ -369,3 +369,46 @@ exports.listAreaPlants = async (req, res) => {
     res.status(500).json({ error: 'internal_error' });
   }
 };
+// PATCH /api/plants/:id
+// Body can include { lastWateredAt?: string|null, lastFertilizedAt?: string|null, notes?: string }
+exports.updatePlantDates = async (req, res) => {
+  try {
+    const userId = toOid(req.userId);
+    const plantId = toOid(req.params.id);
+    if (!userId) return res.status(401).json({ error: "unauthorized" });
+    if (!plantId) return res.status(400).json({ error: "plant_id invalid" });
+
+    const patch = {};
+    if (req.body.hasOwnProperty("lastWateredAt")) {
+      patch.lastWateredAt = req.body.lastWateredAt ? new Date(req.body.lastWateredAt) : null;
+    }
+    if (req.body.hasOwnProperty("lastFertilizedAt")) {
+      patch.lastFertilizedAt = req.body.lastFertilizedAt ? new Date(req.body.lastFertilizedAt) : null;
+    }
+    if (req.body.hasOwnProperty("notes")) {
+      patch.notes = String(req.body.notes || "");
+    }
+    if (!Object.keys(patch).length) {
+      return res.status(400).json({ error: "no_fields_to_update" });
+    }
+    patch.updatedAt = new Date();
+
+    const updated = await Plant.findOneAndUpdate(
+      { _id: plantId, userId },
+      { $set: patch },
+      { new: true }
+    ).lean();
+
+    if (!updated) return res.status(404).json({ error: "not_found" });
+
+    return res.json({
+      plant_id: updated._id.toString(),
+      lastWateredAt: updated.lastWateredAt,
+      lastFertilizedAt: updated.lastFertilizedAt,
+      notes: updated.notes || ""
+    });
+  } catch (err) {
+    console.error("updatePlantDates error:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+};

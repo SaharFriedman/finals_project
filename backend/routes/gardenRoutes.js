@@ -42,5 +42,6 @@ router.post("/photos", upload.single("photo"), ctrl.createPhoto); // multipart: 
 
 // ---- Plants ----
 router.post("/plants", ctrl.bulkUpsertPlants);   // body: rows[], ?user_id= in query or body.user_id
+router.patch("/plants/:id", ctrl.updatePlantDates);
 
 module.exports = router;

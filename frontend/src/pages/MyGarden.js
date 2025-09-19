@@ -122,6 +122,29 @@ export default function PictureDetect() {
     setNewRow(null);
     setPickerOpen(false);
   }
+  async function updatePlantDates(plantId, patch) {
+    const token = localStorage.getItem("token");
+    const res = await axios.patch(
+      `http://localhost:12345/api/plants/${plantId}`,
+      patch,
+      { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+  }
+  function ymdToday() { return new Date().toISOString().slice(0, 10); }
+
+  async function waterToday(plantId) {
+    await updatePlantDates(plantId, { lastWateredAt: ymdToday() });
+    // refresh saved plants
+    const plants = await listAreaPlants(selectedAreaId);
+    setSavedPlants(plants);
+  }
+
+  async function fertilizeToday(plantId) {
+    await updatePlantDates(plantId, { lastFertilizedAt: ymdToday() });
+    const plants = await listAreaPlants(selectedAreaId);
+    setSavedPlants(plants);
+  }
 
   /**************************** this is the end for helpers***************************************************/
 
@@ -404,12 +427,11 @@ export default function PictureDetect() {
   }, [savedPlants]);
 
 
-  // bulbul  8--------------------------------------------------------------------------------------------------------------------------------------------------------------D
   return (
-    <div style={{ height: "100vh", width: "100vw"}}>
+    <div style={{ height: "100vh", width: "100vw" }}>
       <Background onReady={() => setLoading(false)} />
       {loading && <Loading text="Fetching your garden plan..." />}
-      <div style={{ position: "fixed", height: "100vh", width: "100vw", overflowY: "auto", paddingBottom:"50px" }}>
+      <div style={{ position: "fixed", height: "100vh", width: "100vw", overflowY: "auto", paddingBottom: "50px" }}>
         <TopBar
           btn1={
             <SelectAreaDropdown
@@ -610,11 +632,10 @@ export default function PictureDetect() {
 
         {/* Saved plants for this area */}
         {savedPlants.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100vw",border:"none",paddingTop:"3vh" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100vw", border: "none", paddingTop: "3vh" }}>
             <table className="TableOfSavedPlants" border="none" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%", marginBottom: 16 }}>
               <thead>
                 <tr>
-                  <th>Species</th>
                   <th>Photo slot</th>
                   <th>#</th>
                   <th>Label</th>
@@ -623,7 +644,6 @@ export default function PictureDetect() {
                   <th>Fertilized</th>
                   <th>Planted</th>
                   <th>Notes</th>
-                  <th>Delete</th>
                 </tr>
               </thead>
               <tbody>
@@ -632,17 +652,87 @@ export default function PictureDetect() {
                   const photo = savedPhotos.find(p => p.photo_id === r.photo_id);
                   return (
                     <tr key={r.plant_id}>
-                      <td>{r.species_label || ''}</td>
                       <td>{photo ? photo.slot : ''}</td>
                       <td>{r.idx}</td>
                       <td>{r.label}</td>
                       <td>{r.container}</td>
-                      <td>{r.lastWateredAt ? new Date(r.lastWateredAt).toLocaleString() : ''}</td>
-                      <td>{r.lastFertilizedAt ? new Date(r.lastFertilizedAt).toLocaleString() : ''}</td>
+
+                      {/* Watered - show last date, allow set by date picker, plus Today button */}
+                      <td>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <input
+                            type="date"
+                            max={new Date().toISOString().slice(0, 10)}
+                            value={r.lastWateredAt ? String(r.lastWateredAt).slice(0, 10) : ""}
+                            onChange={async (e) => {
+                              const v = e.target.value || null;
+                              await updatePlantDates(r.plant_id, { lastWateredAt: v });
+                              const plants = await listAreaPlants(selectedAreaId);
+                              setSavedPlants(plants);
+                            }}
+                          />
+                          <button
+                            className="myGardenBtn"
+                            type="button"
+                            onClick={() => waterToday(r.plant_id)}
+                            title="Set watered to today"
+                          >
+                            Water today
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Fertilized - same pattern */}
+                      <td>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <input
+                            type="date"
+                            max={new Date().toISOString().slice(0, 10)}
+                            value={r.lastFertilizedAt ? String(r.lastFertilizedAt).slice(0, 10) : ""}
+                            onChange={async (e) => {
+                              const v = e.target.value || null;
+                              await updatePlantDates(r.plant_id, { lastFertilizedAt: v });
+                              const plants = await listAreaPlants(selectedAreaId);
+                              setSavedPlants(plants);
+                            }}
+                          />
+                          <button
+                            className="myGardenBtn"
+                            type="button"
+                            onClick={() => fertilizeToday(r.plant_id)}
+                            title="Set fertilized to today"
+                          >
+                            Fertilize today
+                          </button>
+                        </div>
+                      </td>
+
                       <td>{r.plantedMonth && r.plantedYear ? `${String(r.plantedMonth).padStart(2, '0')}/${r.plantedYear}` : ''}</td>
-                      <td>{r.notes || ''}</td>
-                      <td><button className="deleteBtnOfSavedTable" type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}> Delete</button></td>
+                      <td>
+                        <input
+                          value={r.notes || ""}
+                          onChange={async (e) => {
+                            const v = e.target.value;
+                            // optimistic local update
+                            setSavedPlants(prev => prev.map(p => p.plant_id === r.plant_id ? { ...p, notes: v } : p));
+                            try {
+                              await updatePlantDates(r.plant_id, { notes: v });
+                            } catch (err) {
+                              console.error(err);
+                              alert("Failed to update notes");
+                            }
+                          }}
+                          placeholder="notes..."
+                        />
+                      </td>
+
+                      <td>
+                        <button className="deleteBtnOfSavedTable" type="button" onClick={() => handleDeleteSavedPlant(r.plant_id)}>
+                          Delete
+                        </button>
+                      </td>
                     </tr>
+
                   );
                 })}
               </tbody>
@@ -654,7 +744,7 @@ export default function PictureDetect() {
 
         {/* Image + overlay */}
         {imgURL ? (
-          <div style={{ marginTop: 12,alignItems:"center",justifyContent:"center",display:"flex" ,paddingBottom:"3vh"}}>
+          <div style={{ marginTop: 12, alignItems: "center", justifyContent: "center", display: "flex", paddingBottom: "3vh" }}>
             <DetectionOverlay
               key={imgURL}                 // force remount on new image
               src={imgURL}
@@ -802,7 +892,7 @@ export default function PictureDetect() {
           <>
             <PlantTable rows={rows} setRows={setRows} containerOptions={CONTAINERS} />
             <div style={{ marginTop: 12 }}>
-              <button className="myGardenBtn" style={{minHeight:"60px"}} onClick={handleSavePhotoAndPlants}>
+              <button className="myGardenBtn" style={{ minHeight: "60px" }} onClick={handleSavePhotoAndPlants}>
                 Save Photo + Plants
               </button>
             </div>
