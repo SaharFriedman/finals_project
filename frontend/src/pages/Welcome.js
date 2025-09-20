@@ -715,17 +715,6 @@ const Welcome = () => {
             content={ai.recommendations[0]?.daily_tip?.message || ""}
           />
           <SlideShow slidesComponents={slides} title="Ready for the week ahead" />
-          {/* <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <button
-          className="my-garden-button"
-          type="button"
-          onClick={() => (window.location.href = "/MyGarden")}
-        >
-          Enter your gardens
-        </button>
-
-        
-        </div> */}
            <button
             type="button"
             onClick={buildAndSendGardenPlan}
@@ -734,19 +723,6 @@ const Welcome = () => {
           >
             {loading ? "Working..." : "Get garden care plan"}
           </button>
-          {debugPrompt && (
-            <>
-              <div>User request</div>
-              <pre>{JSON.stringify(debugPrompt.user, null, 2)}</pre>
-            </>
-          )}
-{/*
-          {ai.recommendations.length > 0 && (
-            <>
-              <div>AI response</div>
-              <pre>{JSON.stringify(ai.recommendations[0], null, 2)}</pre>
-            </>
-          )} */}
         </div>
       </div></>);
 }
