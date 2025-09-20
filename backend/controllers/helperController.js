@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const Area = require("../models/area");
 const Plant = require("../models/plant");
 const Photo = require("../models/photos");
-const Event = require("../models/event");
 const ChatMessage = require("../models/chat");
 const TipMessage = require("../models/tip")
 const { callLLM } = require("../services/llm");
@@ -68,45 +67,15 @@ Avoid repeating the same advice within recent history if already given. only ans
     const messages = [
       { role: "system", content: sys },
       { role: "system", content: `USER_PLANTS=${ctxStr}` },
-      ...history,
-      { role: "user", content: message }
+      ...history
     ];
   // LLM response
     const out = await callLLM(messages);
     const text = out.text || "Sorry - no response";
-
-    // Try to parse optional EVENTS JSON
-    let saved = [];
-    const match = text.match(/```json\s*EVENTS\s*([\s\S]*?)```/i) || text.match(/EVENTS:\s*(\[.*\])/i);
-    if (match) {
-      try {
-        const payload = JSON.parse(match[1]);
-        if (Array.isArray(payload)) {
-          for (const ev of payload) {
-            const plant = ctx.find(p => String(p.plant_id) === String(ev.plant_id) || (ev.plant_label && p.label?.toLowerCase() === ev.plant_label.toLowerCase()));
-            const rec = await Event.create({
-              userId,
-              areaId: plant ? plant.area_id : (area_id ? toOid(area_id) : null),
-              plantId: plant ? toOid(plant.plant_id) : null,
-              type: ev.type || "note",
-              amount: typeof ev.amount === "number" ? ev.amount : null,
-              units: ev.units || "",
-              notes: ev.notes || "",
-              happenedAt: ev.happenedAt ? new Date(ev.happenedAt) : new Date(),
-              source: "user"
-            });
-            saved.push({ id: String(rec._id), type: rec.type });
-          }
-        }
-      } catch (e) {
-        // ignore parse errors
-      }
-    }
-
     // Store assistant turn
     await ChatMessage.create({ userId, role: "assistant", text });
 
-    res.json({ reply: text, savedEvents: saved });
+    res.json({ reply: text});
   } catch (e) {
     console.error("helper.chat error", e);
     res.status(500).json({ error: "internal_error" });

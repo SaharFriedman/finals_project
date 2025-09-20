@@ -384,6 +384,13 @@ export default function PictureDetect() {
         // save photos and plants
         setSavedPhotos(photos);
         setSavedPlants(plants);
+           if (imgURL) URL.revokeObjectURL(imgURL);
+    setFile(null);
+    setImgURL("");
+    setRows([]);
+    setNewRow(null);
+    setPickerOpen(false);
+    setNatural({ width: 0, height: 0 });
       } catch (e) {
         console.error("refresh after save failed", e);
       }
@@ -743,7 +750,7 @@ export default function PictureDetect() {
 
         {/* Image + overlay */}
         {imgURL ? (
-          <div style={{ marginTop: 12, alignItems: "center", justifyContent: "center", display: "flex", paddingBottom: "3vh" }}>
+          <div style={{ marginTop: 12, alignItems: "center", justifyContent: "center", display: "flex", paddingBottom: "3vh", gap:"50px" }}>
             <DetectionOverlay
               key={imgURL}                 // force remount on new image
               src={imgURL}
@@ -751,6 +758,23 @@ export default function PictureDetect() {
               detections={rows}
               maxWidth={720}
             />
+                <button className="myGardenBtn" 
+                        type="button"
+                        onClick={() => {
+                          const nextIdx = Math.max(0, ...rows.map(r => Number(r.idx) || 0)) + 1;
+                          setNewRow({
+                            idx: nextIdx,
+                            label: "",
+                            container: "unknown",
+                            confidence: 0.99,
+                            coords: null,
+                            notes: "",
+                          });
+                          setPickerOpen(true); // open the BBoxPicker over the current upload
+                        }}
+                      >
+                        Add plant
+                      </button>
           </div>
         ) : null}
 
@@ -813,78 +837,64 @@ export default function PictureDetect() {
           </div>
         )}
         {newRow && (
-          <div style={{ marginTop: 12, padding: 12, border: "1px solid #ddd", maxWidth: 820 }}>
-            <h3>Add a new plant</h3>
-            <table cellPadding={6} style={{ borderCollapse: "collapse" }}>
-              <tbody>
-                <tr>
-                  <td>Idx</td>
-                  <td>{newRow.idx}</td>
-                </tr>
-                <tr>
-                  <td>Label *</td>
-                  <td>
-                    <input
-                      value={newRow.label}
-                      onChange={e => setNewRow({ ...newRow, label: e.target.value })}
-                      placeholder="e.g., Tomato"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td>Container</td>
-                  <td>
-                    <select
-                      value={newRow.container}
-                      onChange={e => setNewRow({ ...newRow, container: e.target.value })}
-                    >
-                      {CONTAINERS.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Confidence</td>
-                  <td>
-                    <input
-                      type="number" step="0.01" min="0" max="1"
-                      value={newRow.confidence}
-                      onChange={e => setNewRow({ ...newRow, confidence: e.target.value })}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td>Coords *</td>
-                  <td>
-                    <code>{newRow.coords ? JSON.stringify(newRow.coords) : "(pick on photo)"}</code>
-                    <div style={{ marginTop: 6 }}>
-                      <button type="button" onClick={onPickCoords}>Pick on photo</button>
-                    </div>
-                    <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-                      Click and drag on the image to draw a rectangle. We store [x, y, w, h] in original pixels.
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Notes</td>
-                  <td>
-                    <input
-                      value={newRow.notes}
-                      onChange={e => setNewRow({ ...newRow, notes: e.target.value })}
-                      placeholder="optional notes"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+  <div style={{ marginTop: 8, padding: 8, border: "1px solid #ddd", borderRadius: 6 }}>
+    <div
+      className="formOfInfoOfAddPlantOfSaveOfPhoto"
+      style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}
+    >
+      <h3>Index</h3>
+      <div className="numberOfIndexInfo">{newRow.idx}</div>
 
-            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-              <button type="button" onClick={onSaveNewRow}>Save to table</button>
-              <button type="button" onClick={onCancelNewRow}>Cancel</button>
-            </div>
-          </div>
-        )}
+      <h3>Label</h3>
+      <div className="labelOfDataInfo">
+        <input
+          value={newRow.label}
+          onChange={e => setNewRow({ ...newRow, label: e.target.value })}
+          placeholder="e.g., Tomato"
+        />
+      </div>
+
+      <h3>Container</h3>
+      <div className="labelOfContainerInfo">
+        <select
+          value={newRow.container}
+          onChange={e => setNewRow({ ...newRow, container: e.target.value })}
+        >
+          {CONTAINERS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      <h3>Coords</h3>
+      <div className="labelOfContainerInfo">
+ <div className="labelOfContainerInfo">
+                          <code>{savedNew.coords ? JSON.stringify(savedNew.coords) : "(pick on photo above)"}</code>
+                  </div>
+        <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+          Click and drag on the image to draw a rectangle - coordinates are saved as [x1, y1, x2, y2] in pixels.
+        </div>
+      </div>
+
+      <h3>Notes</h3>
+      <div className="labelOfContainerInfo">
+        <input
+          value={newRow.notes}
+          onChange={e => setNewRow({ ...newRow, notes: e.target.value })}
+          placeholder="optional notes"
+        />
+      </div>
+    </div>
+
+    <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "center", paddingTop: "5px", paddingBottom: "5px" }}>
+      <button className="addPlantAreaBtnInfo" type="button" onClick={onSaveNewRow}>
+        Save to table
+      </button>
+      <button className="addPlantAreaBtnInfo" type="button" onClick={onCancelNewRow}>
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
 
         {/* Table + Save */}
         {rows.length > 0 && (
