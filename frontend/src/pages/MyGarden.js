@@ -722,14 +722,23 @@ export default function PictureDetect() {
           </div>
         )}
 
-<div className="container-fluid" style={{ alignItems: "center", justifyContent: "center", display: "flex", marginBottom: "3vh" }}>
-          <div className="TopBar" style={{ maxWidth: "25vw", maxHeight: "8vh", padding: "25px" }}>
+{savedPhotos.length > 0 && (
+  <div className="container-fluid" style={{ alignItems: "center", justifyContent: "center", display: "flex", marginBottom: "3vh" }}>
+    <div className="TopBar" style={{ maxWidth: "25vw", maxHeight: "8vh", padding: "25px" }}>
 
-            <CustomFileUpload label="upload file" onFileSelect={handleFileChange} />
+      <CustomFileUpload label="upload file" onFileSelect={handleFileChange} />
 
-            <button className="MyGardenSecondMenuButton" onClick={runDetect} disabled={!file} style={{ marginLeft: 8 }}> Detect </button>
-          </div>
-        </div>
+      <button
+        className="MyGardenSecondMenuButton"
+        onClick={runDetect}
+        disabled={!file}
+        style={{ marginLeft: 8 }}
+      >
+        Detect
+      </button>
+    </div>
+  </div>
+)}
 
 
         {/* Image + overlay */}
