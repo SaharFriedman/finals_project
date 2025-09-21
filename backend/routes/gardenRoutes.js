@@ -39,7 +39,7 @@ router.delete("/areas/:id", ctrl.deleteArea);
 router.get("/areas/:id/photos", ctrl.listAreaPhotos);
 router.get("/areas/:id/plants", ctrl.listAreaPlants);
 router.post("/photos", upload.single("photo"), ctrl.createPhoto); // multipart: photo + user_id + area_id + taken_at?
-
+router.delete("/photos/:id",ctrl.deletePhoto);
 // ---- Plants ----
 router.post("/plants", ctrl.bulkUpsertPlants);   // body: rows[], ?user_id= in query or body.user_id
 router.patch("/plants/:id", ctrl.updatePlantDates);

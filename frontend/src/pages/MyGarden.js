@@ -60,7 +60,6 @@ export default function PictureDetect() {
       setSavedPlants(plants);
     } catch (err) {
       console.error("Failed to water all:", err);
-      alert("Failed to mark all as watered today");
     }
   }
   async function fertilizedAllToday() {
@@ -77,7 +76,6 @@ export default function PictureDetect() {
       setSavedPlants(plants);
     } catch (err) {
       console.error("Failed to water all:", err);
-      alert("Failed to mark all as watered today");
     }
   }
   // changing the name of the list to work with several methods of the API w.o relaying on the server 
@@ -204,7 +202,6 @@ export default function PictureDetect() {
       setSelectedAreaId(a.area_id);
     } catch (e) {
       console.error(e);
-      alert("Failed to create area");
     }
   }
   // this function handles a deletion of a new area
@@ -238,7 +235,6 @@ export default function PictureDetect() {
       setImgURL("");
     } catch (e) {
       console.error(e);
-      alert(e.message || "Delete area failed");
     }
   }
 
@@ -257,8 +253,6 @@ export default function PictureDetect() {
       setAreas(prev => prev.map(x => x.area_id === updated.area_id ? updated : x));
     } catch (e) {
       console.error(e);
-      // refactor the alert!
-      alert("Rename failed");
     }
   }
 
@@ -288,7 +282,7 @@ export default function PictureDetect() {
     } catch (e) {
       console.error(e);
       // refactor later
-      alert(e.message || 'Delete failed');
+      alert("different name required");
     }
   }
   // to fix rendering from plant adding
@@ -299,15 +293,13 @@ export default function PictureDetect() {
   }
   // this function handles the detection flow of the page  
   async function runDetect() {
-    // refactor the alert!
-    if (!file) return alert("Choose a photo first.");
+    if (!file) return ;
     // run the prediction model of the python server
     const fd = new FormData();
     fd.append("image", file);
     const res = await fetch(PREDICT_URL, { method: "POST", body: fd });
     if (!res.ok) {
       console.error("Detect failed", res.status);
-      return alert("Detect failed");
     }
     // recieve the data from the python server API
     const data = await res.json();
@@ -336,7 +328,7 @@ export default function PictureDetect() {
       if (!rows.length) return alert("No plants to save.");
       // add a date to the 
       const takenAt = new Date().toISOString();
-      const { photo_id, slot } = await savePhotoFile({
+      const { photo_id } = await savePhotoFile({
         file,
         areaId: selectedAreaId,
         takenAt,
@@ -365,8 +357,6 @@ export default function PictureDetect() {
           Authorization: `Bearer ${token}`
         }
       });
-      // refactor alert!
-      alert(`Saved! (Photo slot ${slot})`);
       try {
         const [photos, plants] = await Promise.all([
           listAreaPhotos(selectedAreaId),
@@ -387,7 +377,6 @@ export default function PictureDetect() {
       }
     } catch (e) {
       console.error(e);
-      alert(e.message || "Save failed");
     }
   }
   // compute the plants that are saved and return with some parameters only when savedplants are changed
@@ -471,6 +460,21 @@ export default function PictureDetect() {
                   >
                     Add plant
                   </button>
+                  <button
+          className="myGardenBtn"
+          type="button"
+          onClick={async () => {
+            try{
+              await deletePhoto(p.photo_id);
+              setSavedPlants(prev => prev.filter(pl => pl.photo_id !== p.photo_id));
+              setSavedPhotos(prev => prev.filter(ph => ph.photo_id !== p.photo_id));
+              
+            }catch(e){
+            console.error(e);
+            }
+           }}>
+                    delete photo
+          </button>
                   {/* Global picker modal for adding to any saved photo */}
                   {pickerSavedOpen && savedNew?.photo && (
                     <div
@@ -594,7 +598,6 @@ export default function PictureDetect() {
                               setSavedNew(null);
                             } catch (e) {
                               console.error(e);
-                              alert(e.message || "Save failed");
                             }
                           }}
                         >
@@ -697,7 +700,6 @@ export default function PictureDetect() {
                               await updatePlantDates(r.plant_id, { notes: v });
                             } catch (err) {
                               console.error(err);
-                              alert("Failed to update notes");
                             }
                           }}
                           placeholder="notes..."

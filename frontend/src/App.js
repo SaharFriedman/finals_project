@@ -24,35 +24,26 @@ export async function isAuthenticated() {
 
 // in order to check connectivity, while loading the  current page and redirect otherwise
 function RequireAuth({ children }) {
-  const location = useLocation(); // find the current page
-  const [state, setState] = useState('checking'); // 'checking' | 'ok' | 'nope' defined states of validation
+  const location = useLocation();
+  const [state, setState] = useState('checking');
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const ok = await isAuthenticated(); // the user is verified
+      const ok = await isAuthenticated();
       if (!mounted) return;
-      setState(ok ? 'ok' : 'nope'); // change the rendering state
-      if (!ok) localStorage.removeItem('token'); // delete the current token if the user is not verified
+      setState(ok ? 'ok' : 'nope');
+      if (!ok) localStorage.removeItem('token');
     })();
-    return () => { mounted = false; }; // unmount the program
+    return () => { mounted = false; };
   }, []);
 
-  if (state === 'checking') return <div style={{ padding: 16 }}>Checking session…</div>; // wait for the check while loading the screen and change the rendering
-  if (state === 'nope') return <Navigate to="/signin" replace state={{ from: location }} />; // unverified - go to login
+  if (state === 'checking') return <div style={{ padding: 16 }}>Checking session…</div>;
+  if (state === 'nope') return <Navigate to="/" replace state={{ from: location }} />;
   return children;
 }
-function App() {
-  // find the token while starting the app to check for existence. 
-  const token = useState(() => localStorage.getItem('token') || '');
-  useEffect(() => {
-    if (token && token !== 'undefined' && token !== 'null') {
-      localStorage.setItem('token', token);
-    } else {
-      localStorage.removeItem('token'); // cleanup
-    }
-  }, [token]); // run whenever token chagne
 
+function App() {
   return (
     <div className="App">
       <Router>
@@ -62,9 +53,9 @@ function App() {
           {/* Private */}
           <Route path="/MyGarden" element={<RequireAuth><MyGarden /></RequireAuth>} />
           <Route path="/welcome" element={<RequireAuth><WelcomePage /></RequireAuth>} />
+          <Route path="/my-helper" element={<RequireAuth><MyHelper/></RequireAuth>} />
           {/* fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
-          <Route path="/my-helper" element={<MyHelper/>} />
       </Routes>
       </Router>
     </div>
