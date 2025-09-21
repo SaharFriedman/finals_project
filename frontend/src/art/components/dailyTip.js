@@ -1,4 +1,4 @@
-const image = require("../assets/zibi.jpg")
+const image = require("../assets/daily_tip.jpg")
 const DailyTip = ({header, subheader, content, img_ref}) =>(
     <div className="contentContainer">
         <div className="dailyTipContainer">

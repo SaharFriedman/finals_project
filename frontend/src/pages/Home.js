@@ -80,15 +80,16 @@ function Home() {
         <div className="welcome-row">
           <Logo className="LogoWelcome" />
           <div className="welcome-text">
-            <h1>Hi, my name is Zibi</h1>
-            Zibi is a fictional character created for this website demo. Zibi represents a friendly guide to help users get started.
-            zibi is nice. be more like zibi!
+            <h1>Welcome to MyGarden!</h1>
+          Welcome to our final project, created by Sahar Friedman and Adar Kliger. This project is designed to help users manage and track their garden with smart, interactive tools. By uploading photos, detecting plants, and keeping a record of growth and care,
+          the system makes gardening more organized and engaging. We’re excited to share our work with you and hope you enjoy exploring the features we’ve built.
           </div>
         </div>
 
         <div className="welcomePageForm">
           <button className="sign-up-button" type="button" onClick={() => {setOpenSignUp(true);setSignUpError("");}}>
             Join Us
+            
           </button>
           <button className="sign-in-button" type="button" onClick={() => {setOpenSignIn(true);setSignInError("");}}>
             Sign In

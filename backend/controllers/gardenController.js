@@ -191,23 +191,6 @@ exports.createPhoto = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 };
-/**
- * DELETE /api/photos/:id
- */
-exports.deletePhoto = async (req, res) => {
-  try{
-    const photoID = toOid(req.params.id);
-    const photoObj = await Photo.findOne({ _id: photoID });
-    const fileDeletion = await deleter.deleteFiles([photoObj.fileName]);
-    if(!fileDeletion) return res.status(404).json({ error: 'not_found' });
-    const deleted = await Photo.deleteOne({ _id: photoID });
-    if (!deleted) return res.status(404).json({ error: 'not_found' });
-    return res.json({ ok: true, photoID: photoID.toString() });
-  }
-  catch (e) {
-    res.status(500).json({ error: "internal_error" });
-  }
-}
 
 
 /**
@@ -410,5 +393,34 @@ exports.updatePlantDates = async (req, res) => {
   } catch (err) {
     console.error("updatePlantDates error:", err);
     res.status(500).json({ error: "internal_error" });
+  }
+};
+/**
+ * DELETE /api/photos/:id
+ */
+exports.deletePhoto = async (req, res) => {
+  try {
+    const userId = toOid(req.userId);
+    const photoID = toOid(req.params.id);
+    if (!userId) return res.status(401).json({ error: "unauthorized" });
+    if (!photoID) return res.status(400).json({ error: "photo_id invalid" });
+
+    // ensure the photo belongs to the user
+    const photoObj = await Photo.findOne({ _id: photoID, userId });
+    if (!photoObj) return res.status(404).json({ error: "not_found" });
+
+    // delete plants tied to this photo first
+    await Plant.deleteMany({ photoId: photoObj._id, userId });
+
+    // delete the file from disk
+    await deleter.deleteFiles([photoObj.fileName]);
+
+    // delete the photo record
+    await Photo.deleteOne({ _id: photoObj._id });
+
+    return res.json({ ok: true, photoID: photoID.toString() });
+  } catch (e) {
+    console.error("deletePhoto error:", e);
+    return res.status(500).json({ error: "internal_error" });
   }
 };
