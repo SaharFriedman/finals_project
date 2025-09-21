@@ -99,15 +99,6 @@ export default function PictureDetect() {
 
   const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
 
-
-  function onPickCoords() {
-    if (!imgURL) {
-      alert("No image loaded.");
-      return;
-    }
-    setPickerOpen(true);
-  }
-
   function onCoordsPicked(coordsPx) {
     // picker returns [x,y,w,h] in original pixels - convert to [x1,y1,x2,y2]
     const xyxy = xywhToXyxy(coordsPx);

@@ -44,7 +44,7 @@ function RequireAuth({ children }) {
 }
 function App() {
   // find the token while starting the app to check for existence. 
-  const [token, setToken] = useState(() => localStorage.getItem('token') || '');
+  const token = useState(() => localStorage.getItem('token') || '');
   useEffect(() => {
     if (token && token !== 'undefined' && token !== 'null') {
       localStorage.setItem('token', token);
