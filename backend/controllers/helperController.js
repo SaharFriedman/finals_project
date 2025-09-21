@@ -15,7 +15,7 @@ const toolDefs = [
     type: "function",
     function: {
       name: "get_plant",
-      description: "Fetch a single plant by id or label",
+    description: "Fetch a single plant and its full context for grounding: area_id, photo_id, slot, photo url and size, and bbox for the plant on that photo.",
       parameters: {
         type: "object",
         properties: {
@@ -31,7 +31,7 @@ const toolDefs = [
     type: "function",
     function: {
       name: "update_plant_note",
-      description: "Update or append a note for a plant",
+      description: "Update or append a note for a plant for your own purposes, or a significant data the user provided about this plant, if there is previous data in it do not override and write the note with that data combined",
       parameters: {
         type: "object",
         properties: {
@@ -40,23 +40,6 @@ const toolDefs = [
           mode: { type: "string", enum: ["replace", "append"], description: "Replace or append" }
         },
         required: ["plant_id", "note"],
-        additionalProperties: false
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "request_slot_photo",
-      description: "Ask the user to upload a photo of a specific slot in an area",
-      parameters: {
-        type: "object",
-        properties: {
-          area_id: { type: "string", description: "The area id" },
-          slot_id: { type: "string", description: "The slot identifier inside the area" },
-          reason: { type: "string", description: "Why the photo is requested" }
-        },
-        required: ["area_id", "slot_id"],
         additionalProperties: false
       }
     }
@@ -120,10 +103,45 @@ exports.chat = async (req, res) => {
     const ctx = await getContext(userId);
 
     // Build a constrained prompt with instruction to return optional JSON block
-    const sys = `You are My Helper - a personal garden assistant. 
-You answer using the user's private garden data. Never invent dates. 
-Avoid repeating the same advice within recent history if already given. only answer relevant questions about gardening and garden data. if you need any more context use the tools provided.
-`;
+    const sys = `
+You are My Helper - a personal garden assistant.
+
+Core rules:
+- Write in plain, simple language. Default to 1-3 sentences or 3-5 short bullets.
+- Never invent or assume dates, numbers, or plant states.
+- Do not repeat the same advice recently given. Keep answers fresh and incremental.
+- Stay focused on gardening and the user's garden data only.
+- If info is missing, ask a single clear question or use the tools.
+- Summarize results from tools; do not dump raw JSON or full records.
+
+Memory rules:
+- When you learn a durable fact (watering pattern, pests, soil type, sun exposure, transplant date, etc.), call update_plant_note.
+- Notes must be very short (5-15 words) and tagged. Example:
+  [watering] Basil droops by noon - morning water better
+  [pests] Aphids on roses 2025-09-20
+  [sun] West bed gets 5h direct sun
+- Use append unless replacing outdated info.
+
+Answer format:
+- Prefer bullets for tasks, schedules, amounts.
+- Include one actionable next step if possible (e.g., when to water, how much).
+- If you need a new photo to proceed, explain why and call request_slot_photo.
+`.trim();
+    const dev = `
+Behavior contract:
+
+Tool usage:
+- get_plant: when details about a plant's type or notes are needed.
+- get_weather: before giving timing advice that depends on forecasted heat, rain, or wind.
+- request_slot_photo: when diagnosis or comparison requires a new picture.
+- update_plant_note: after extracting a durable fact, store it in a short tagged line.
+
+Style rules:
+- Do not output walls of text or multiple-day weather dumps.
+- Always summarize: "Hot and dry this week - water earlier" instead of listing daily highs.
+- Numbers should be specific and bounded ("500-700 ml", "every 3-4 days").
+- Only ask the user one clear follow-up question if necessary.
+`.trim();
 
     // recent messages with a limit of 8 recent commands
     const recent = await ChatMessage.find({ userId }).sort({ createdAt: -1 }).limit(8).lean();
@@ -135,6 +153,7 @@ Avoid repeating the same advice within recent history if already given. only ans
     const messages = [
       { role: "system", content: sys },
       { role: "system", content: `USER_PLANTS=${ctxStr}` },
+      { role: "system", content: dev }, // optional, but recommended
       ...history,
       { role: "user", content: message }
     ];
@@ -144,44 +163,44 @@ Avoid repeating the same advice within recent history if already given. only ans
 
     while (loops++ < 4) {
       const r = await callLLMForChat({ messages, tools: toolDefs });
-if (r.assistant_message?.tool_calls?.length) {
-  // 1) push the assistant message that contains the tool_calls
-  messages.push(r.assistant_message);
+      if (r.assistant_message?.tool_calls?.length) {
+        // 1) push the assistant message that contains the tool_calls
+        messages.push(r.assistant_message);
 
-  // 2) respond to every tool_call in that message
-  for (const tc of r.assistant_message.tool_calls) {
-    const name = tc.function?.name;
-    let args = {};
-    try {
-      args = JSON.parse(tc.function?.arguments || "{}");
-    } catch (_) {
-      // keep args as {}
-    }
+        // 2) respond to every tool_call in that message
+        for (const tc of r.assistant_message.tool_calls) {
+          const name = tc.function?.name;
+          let args = {};
+          try {
+            args = JSON.parse(tc.function?.arguments || "{}");
+          } catch (_) {
+            // keep args as {}
+          }
 
-    let result;
-    try {
-      const fn = tools[name];
-      if (!fn) {
-        result = { error: `unknown tool: ${name}` };
-      } else {
-        result = await fn(args, { userId });
+          let result;
+          try {
+            const fn = tools[name];
+            if (!fn) {
+              result = { error: `unknown tool: ${name}` };
+            } else {
+              result = await fn(args, { userId });
+            }
+          } catch (e) {
+            result = { error: "tool exception", details: String(e).slice(0, 500) };
+          }
+
+          // 3) push one tool message per tool_call_id
+          messages.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: JSON.stringify(result) // must be a string
+          });
+        }
+
+        // 4) go back to the model with both the assistant tool_calls message
+        //    and the N tool responses appended
+        continue;
       }
-    } catch (e) {
-      result = { error: "tool exception", details: String(e).slice(0, 500) };
-    }
-
-    // 3) push one tool message per tool_call_id
-    messages.push({
-      role: "tool",
-      tool_call_id: tc.id,
-      content: JSON.stringify(result) // must be a string
-    });
-  }
-
-  // 4) go back to the model with both the assistant tool_calls message
-  //    and the N tool responses appended
-  continue;
-}
       await ChatMessage.create({ userId, role: "assistant", text: r.text });
       return res.json({ reply: r.text });
     }

@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Home from "./pages/Home";
-import SignUp from "./pages/SignUp";
-import SignIn from "./pages/SignIn";
 import MyGarden from './pages/MyGarden';
 import WelcomePage from './pages/Welcome';
 

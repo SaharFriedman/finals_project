@@ -542,7 +542,14 @@
   opacity: 0;
   /* triggers the fade out */
 }
-
+.popup-error{
+  color: red; 
+  margin-Top: 8;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  text-shadow: 0px 4px 2px black;
+  font-size: 1.5rem;
+}
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -900,10 +907,14 @@
   background: rgba(0, 0, 0, 0.442);
   color: white;
   border-radius: 5px;
-  aspect-ratio: 4;
+  /* aspect-ratio: 4; */
   box-shadow: 1px 1px 1px black;
   text-shadow: 1px 1px 4px black;
   transition: all 0.3s ease-in-out;
+    margin: 0 auto;                 /* center the card itself */
+  display: flex;                  
+  flex-direction: column;         
+  align-items: center; 
 }
 .boxPickerBtn {
   padding: 5px;

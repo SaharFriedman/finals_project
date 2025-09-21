@@ -10,10 +10,13 @@ import { useNavigate } from "react-router-dom";
 function Home() {
   const [openSignIn, setOpenSignIn] = useState(false);
   const [openSignUp, setOpenSignUp] = useState(false);
-  const [loading, setLoading] = useState(true);   // start loading until video is ready
+  const [loading, setLoading] = useState(true);
+  const [signUpError, setSignUpError] = useState("");
+  const [signInError, setSignInError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmitSignIn = async ({ username, password }) => {
+    setSignInError("");
     try {
       const { data, status } = await axios.post(
         "http://localhost:12345/api/token",
@@ -24,31 +27,48 @@ function Home() {
         if (!token) throw new Error("No token returned");
         localStorage.setItem("token", token);
         axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+        setOpenSignIn(false); // close on success
         navigate("/welcome", { replace: true });
+      } else {
+        setSignInError("Login failed. Status " + status);
       }
     } catch (err) {
       console.error(err);
-      alert("Can't log in!");
+      setSignInError("Invalid username or password");
     }
-    setOpenSignIn(false);
   };
 
   const handleSubmitSignUp = async ({ username, password }) => {
+    setSignUpError("");
+
+    // restrictions
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    if (!usernameRegex.test(username)) {
+      setSignUpError("Username must be 3-20 chars, only letters, numbers, or underscore.");
+      return;
+    }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      setSignUpError("Password must be at least 8 characters and include upper, lower, number, and special character.");
+      return;
+    }
+
     try {
       const res = await axios.post("http://localhost:12345/api/signup", {
         name: username,
         password,
       });
       if (res.status === 200) {
-        alert("Sign up successful!");
+        setSignUpError("");
+        setOpenSignUp(false); // close on success
+        setSignInError("");
       } else {
-        alert("Failed: " + res.status);
+        setSignUpError("Signup failed. Status " + res.status);
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to sign up!");
+      setSignUpError("Server error: " + (err?.response?.data || "Failed to sign up."));
     }
-    setOpenSignUp(false);
   };
 
   return (
@@ -67,28 +87,30 @@ function Home() {
         </div>
 
         <div className="welcomePageForm">
-          <button className="sign-up-button" type="button" onClick={() => setOpenSignUp(true)}>
+          <button className="sign-up-button" type="button" onClick={() => {setOpenSignUp(true);setSignUpError("");}}>
             Join Us
           </button>
-          <button className="sign-in-button" type="button" onClick={() => setOpenSignIn(true)}>
+          <button className="sign-in-button" type="button" onClick={() => {setOpenSignIn(true);setSignInError("");}}>
             Sign In
           </button>
         </div>
 
+        {/* Correct usage: props on the component, error text as children */}
         <PopupForm
           isOpen={openSignIn}
           onClose={() => setOpenSignIn(false)}
           onSubmit={handleSubmitSignIn}
-          text="Zibi Sign In"
+          text="Sign In"
           submitButton={<button type="submit">Login</button>}
-        />
+            errorText={signInError}/>
 
         <PopupForm
           isOpen={openSignUp}
           onClose={() => setOpenSignUp(false)}
           onSubmit={handleSubmitSignUp}
-          text="Zibi Sign Up"
+          text="Sign Up"
           submitButton={<button type="submit">Sign Up</button>}
+          errorText={signUpError}
         />
       </div>
     </div>

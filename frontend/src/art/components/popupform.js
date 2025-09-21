@@ -6,6 +6,7 @@ export default function PopupForm({
   onClose, 
   onSubmit, 
   submitButton, 
+  errorText = "",
   text 
 }) {
   if (!isOpen) return null; // don’t render if closed
@@ -36,7 +37,12 @@ export default function PopupForm({
             placeholder="Password"
             required
           />
-
+          {(errorText) && (
+            <div
+              className="popup-error">
+              {errorText ? <p style={{ margin: 0 }}>{errorText}</p> : null}
+            </div>
+          )}
           <div className="popup-actions">
             {submitButton || <button type="submit">Submit</button>}
           </div>

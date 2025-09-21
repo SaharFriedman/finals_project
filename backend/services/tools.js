@@ -9,19 +9,44 @@ function pickWeatherSummary(j) {
   };
 }
 const tools = {
-  async get_plant({ plant_id, label }, { userId }) {
+   async get_plant({ plant_id, label }, { userId }) {
     const q = { userId };
     if (plant_id) q._id = plant_id;
     else if (label) q.label = new RegExp(`^${label}$`, "i");
+
     const p = await Plant.findOne(q).lean();
     if (!p) return { not_found: true };
+
+    // 2) Load its photo to get area, slot, file, dims
+    const ph = await Photo.findOne({ _id: p.photoId, userId }).lean();
+    // If photo missing, still return the plant fields we have
+    const areaId = ph ? String(ph.areaId) : String(p.areaId);
+    const slot = ph ? ph.slot : null;
+    const width = ph ? ph.width : null;
+    const height = ph ? ph.height : null;
+    const photoUrl = ph ? `/static/photos/${ph.fileName}` : null;
     return {
+      type: "PLANT_CONTEXT",
       plant_id: String(p._id),
       label: p.label,
       container: p.container,
-      lastWateredAt: p.lastWateredAt,
-      lastFertilizedAt: p.lastFertilizedAt,
-      chatNote: p.chatNote
+      idx: p.idx,                        // index on the photo
+      bbox_px: Array.isArray(p.coordsPx) ? p.coordsPx.map(Number) : null, // [x1,y1,x2,y2]
+      notes: p.notes || "",
+      chatNote: p.chatNote || "",
+      lastWateredAt: p.lastWateredAt || null,
+      lastFertilizedAt: p.lastFertilizedAt || null,
+      plantedMonth: p.plantedMonth ?? null,
+      plantedYear: p.plantedYear ?? null,
+
+      area_id: areaId,
+      photo_id: ph ? String(ph._id) : String(p.photoId),
+      slot,          // 1..3
+      photo: {
+        url: photoUrl, // serveable URL
+        width,
+        height,
+      }
     };
   },
 
@@ -32,14 +57,6 @@ const tools = {
     p.chatNote = clean;
     await p.save();
     return { ok: true, chatNote: p.chatNote };
-  },
-
-  async request_slot_photo({ area_id, slot_id }, { userId }) {
-    return {
-      action: "UPLOAD_SLOT_PHOTO",
-      area_id, slot_id,
-      instructions: "Please upload a clear photo for this slot."
-    };
   },
 
   async get_weather({ lat, lon }, { userId }) {
