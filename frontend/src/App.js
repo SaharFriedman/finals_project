@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Home from "./pages/Home";
-import SignUp from "./pages/SignUp";
-import SignIn from "./pages/SignIn";
 import MyGarden from './pages/MyGarden';
 import WelcomePage from './pages/Welcome';
 
@@ -46,7 +44,7 @@ function RequireAuth({ children }) {
 }
 function App() {
   // find the token while starting the app to check for existence. 
-  const [token, setToken] = useState(() => localStorage.getItem('token') || '');
+  const token = useState(() => localStorage.getItem('token') || '');
   useEffect(() => {
     if (token && token !== 'undefined' && token !== 'null') {
       localStorage.setItem('token', token);

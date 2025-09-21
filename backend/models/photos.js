@@ -8,7 +8,7 @@ const PhotoSchema = new mongoose.Schema({
   width:    { type: Number, required: true },
   height:   { type: Number, required: true },
   takenAt:  { type: Date,   required: true },
-
+ 
   slot:     { type: Number, enum: [1,2,3], required: true }, // photo # inside the area
 }, { timestamps: true });
 

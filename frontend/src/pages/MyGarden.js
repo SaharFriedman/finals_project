@@ -99,15 +99,6 @@ export default function PictureDetect() {
 
   const CONTAINERS = ["unknown", "Pot", "Raised_Bed", "ground"];
 
-
-  function onPickCoords() {
-    if (!imgURL) {
-      alert("No image loaded.");
-      return;
-    }
-    setPickerOpen(true);
-  }
-
   function onCoordsPicked(coordsPx) {
     // picker returns [x,y,w,h] in original pixels - convert to [x1,y1,x2,y2]
     const xyxy = xywhToXyxy(coordsPx);
@@ -384,13 +375,13 @@ export default function PictureDetect() {
         // save photos and plants
         setSavedPhotos(photos);
         setSavedPlants(plants);
-           if (imgURL) URL.revokeObjectURL(imgURL);
-    setFile(null);
-    setImgURL("");
-    setRows([]);
-    setNewRow(null);
-    setPickerOpen(false);
-    setNatural({ width: 0, height: 0 });
+        if (imgURL) URL.revokeObjectURL(imgURL);
+        setFile(null);
+        setImgURL("");
+        setRows([]);
+        setNewRow(null);
+        setPickerOpen(false);
+        setNatural({ width: 0, height: 0 });
       } catch (e) {
         console.error("refresh after save failed", e);
       }
@@ -445,10 +436,10 @@ export default function PictureDetect() {
 
         {/* Saved photos for this area with overlays */}
         {savedPhotos.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 12,justifyItems: "center"  }}>
             {savedPhotos.map(p => (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div className="savedPhotoDisplayerMyGarden" key={p.photo_id} style={{ maxWidth: "95vw", border: '1px solid #ddd', padding: 8, borderRadius: 8 }}>
+                <div className="savedPhotoDisplayerMyGarden" key={p.photo_id} style={{ maxWidth: "95vw", border: '1px solid #ddd', padding: 8, borderRadius: 8,alignItems:"center",justifyContent:"center"  }}>
                   <div style={{ fontSize: "4vh", color: "white", marginBottom: 4 }}>
                     Photo slot {p.slot} - taken {new Date(p.takenAt).toLocaleString()}
                   </div>
@@ -661,7 +652,6 @@ export default function PictureDetect() {
                       <td>{r.idx}</td>
                       <td>{r.label}</td>
                       <td>{r.container}</td>
-
                       {/* Watered - show last date, allow set by date picker, plus Today button */}
                       <td className="labelOfContainerInfo">
                         <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "center" }}>
@@ -678,7 +668,6 @@ export default function PictureDetect() {
                           />
                         </div>
                       </td>
-
                       {/* Fertilized - same pattern */}
                       <td className="labelOfContainerInfo">
                         <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "center" }}>
@@ -728,29 +717,26 @@ export default function PictureDetect() {
             </table>
           </div>
         )}
-
-{savedPhotos.length > 0 && (
-  <div className="container-fluid" style={{ alignItems: "center", justifyContent: "center", display: "flex", marginBottom: "3vh" }}>
-    <div className="TopBar" style={{ maxWidth: "25vw", maxHeight: "8vh", padding: "25px" }}>
-
-      <CustomFileUpload label="upload file" onFileSelect={handleFileChange} />
-
-      <button
-        className="MyGardenSecondMenuButton"
-        onClick={runDetect}
-        disabled={!file}
-        style={{ marginLeft: 8 }}
-      >
-        Detect
-      </button>
-    </div>
-  </div>
-)}
+        {savedPhotos.length > 0 && (
+          <div className="container-fluid" style={{ alignItems: "center", justifyContent: "center", display: "flex", marginBottom: "3vh" }}>
+            <div className="TopBar" style={{ maxWidth: "25vw", maxHeight: "8vh", padding: "25px" }}>
+              <CustomFileUpload label="upload file" onFileSelect={handleFileChange} />
+              <button
+                className="MyGardenSecondMenuButton"
+                onClick={runDetect}
+                disabled={!file}
+                style={{ marginLeft: 8 }}
+              >
+                Detect
+              </button>
+            </div>
+          </div>
+        )}
 
 
         {/* Image + overlay */}
         {imgURL ? (
-          <div style={{ marginTop: 12, alignItems: "center", justifyContent: "center", display: "flex", paddingBottom: "3vh", gap:"50px" }}>
+          <div style={{ marginTop: 12, alignItems: "center", justifyContent: "center", display: "flex", paddingBottom: "3vh", gap: "50px" }}>
             <DetectionOverlay
               key={imgURL}                 // force remount on new image
               src={imgURL}
@@ -758,23 +744,23 @@ export default function PictureDetect() {
               detections={rows}
               maxWidth={720}
             />
-                <button className="myGardenBtn" 
-                        type="button"
-                        onClick={() => {
-                          const nextIdx = Math.max(0, ...rows.map(r => Number(r.idx) || 0)) + 1;
-                          setNewRow({
-                            idx: nextIdx,
-                            label: "",
-                            container: "unknown",
-                            confidence: 0.99,
-                            coords: null,
-                            notes: "",
-                          });
-                          setPickerOpen(true); // open the BBoxPicker over the current upload
-                        }}
-                      >
-                        Add plant
-                      </button>
+            <button className="myGardenBtn"
+              type="button"
+              onClick={() => {
+                const nextIdx = Math.max(0, ...rows.map(r => Number(r.idx) || 0)) + 1;
+                setNewRow({
+                  idx: nextIdx,
+                  label: "",
+                  container: "unknown",
+                  confidence: 0.99,
+                  coords: null,
+                  notes: "",
+                });
+                setPickerOpen(true); // open the BBoxPicker over the current upload
+              }}
+            >
+              Add plant
+            </button>
           </div>
         ) : null}
 
@@ -837,63 +823,63 @@ export default function PictureDetect() {
           </div>
         )}
         {newRow && (
-  <div style={{ marginTop: 8, padding: 8, border: "1px solid #ddd", borderRadius: 6 }}>
-    <div
-      className="formOfInfoOfAddPlantOfSaveOfPhoto"
-      style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}
-    >
-      <h3>Index</h3>
-      <div className="numberOfIndexInfo">{newRow.idx}</div>
+          <div style={{ marginTop: 8, padding: 8, border: "1px solid #ddd", borderRadius: 6 }}>
+            <div
+              className="formOfInfoOfAddPlantOfSaveOfPhoto"
+              style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, alignItems: "center" }}
+            >
+              <h3>Index</h3>
+              <div className="numberOfIndexInfo">{newRow.idx}</div>
 
-      <h3>Label</h3>
-      <div className="labelOfDataInfo">
-        <input
-          value={newRow.label}
-          onChange={e => setNewRow({ ...newRow, label: e.target.value })}
-          placeholder="e.g., Tomato"
-        />
-      </div>
+              <h3>Label</h3>
+              <div className="labelOfDataInfo">
+                <input
+                  value={newRow.label}
+                  onChange={e => setNewRow({ ...newRow, label: e.target.value })}
+                  placeholder="e.g., Tomato"
+                />
+              </div>
 
-      <h3>Container</h3>
-      <div className="labelOfContainerInfo">
-        <select
-          value={newRow.container}
-          onChange={e => setNewRow({ ...newRow, container: e.target.value })}
-        >
-          {CONTAINERS.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-      </div>
+              <h3>Container</h3>
+              <div className="labelOfContainerInfo">
+                <select
+                  value={newRow.container}
+                  onChange={e => setNewRow({ ...newRow, container: e.target.value })}
+                >
+                  {CONTAINERS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
 
-      <h3>Coords</h3>
-      <div className="labelOfContainerInfo">
- <div className="labelOfContainerInfo">
-                          <code>{savedNew.coords ? JSON.stringify(savedNew.coords) : "(pick on photo above)"}</code>
-                  </div>
-        <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-          Click and drag on the image to draw a rectangle - coordinates are saved as [x1, y1, x2, y2] in pixels.
-        </div>
-      </div>
+              <h3>Coords</h3>
+              <div className="labelOfContainerInfo">
+                <div className="labelOfContainerInfo">
+                  <code>{savedNew.coords ? JSON.stringify(savedNew.coords) : "(pick on photo above)"}</code>
+                </div>
+                <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                  Click and drag on the image to draw a rectangle - coordinates are saved as [x1, y1, x2, y2] in pixels.
+                </div>
+              </div>
 
-      <h3>Notes</h3>
-      <div className="labelOfContainerInfo">
-        <input
-          value={newRow.notes}
-          onChange={e => setNewRow({ ...newRow, notes: e.target.value })}
-          placeholder="optional notes"
-        />
-      </div>
-    </div>
+              <h3>Notes</h3>
+              <div className="labelOfContainerInfo">
+                <input
+                  value={newRow.notes}
+                  onChange={e => setNewRow({ ...newRow, notes: e.target.value })}
+                  placeholder="optional notes"
+                />
+              </div>
+            </div>
 
-    <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "center", paddingTop: "5px", paddingBottom: "5px" }}>
-      <button className="addPlantAreaBtnInfo" type="button" onClick={onSaveNewRow}>
-        Save to table
-      </button>
-      <button className="addPlantAreaBtnInfo" type="button" onClick={onCancelNewRow}>
-        Cancel
-      </button>
-    </div>
-  </div>
-)}
+            <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "center", paddingTop: "5px", paddingBottom: "5px" }}>
+              <button className="addPlantAreaBtnInfo" type="button" onClick={onSaveNewRow}>
+                Save to table
+              </button>
+              <button className="addPlantAreaBtnInfo" type="button" onClick={onCancelNewRow}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
 
         {/* Table + Save */}

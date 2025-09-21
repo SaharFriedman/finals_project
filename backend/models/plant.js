@@ -15,6 +15,7 @@ const PlantSchema = new mongoose.Schema({
   lastFertilizedAt: { type: Date, default: null },
   plantedMonth:     { type: Number, min: 1, max: 12, default: null },
   plantedYear:      { type: Number, min: 1900, max: 3000, default: null },
+  chatNote: { type: String, default: "", maxlength: 1000 },
 }, { timestamps: true });
 
 // Guarantees per-photo numbering uniqueness
