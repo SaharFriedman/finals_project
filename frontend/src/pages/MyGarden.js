@@ -31,6 +31,8 @@ export default function PictureDetect() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const imgPickRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectMessage, setDetectMessage] = useState("");
 
   function resetUploadState() {
     // revoke old blob url
@@ -293,18 +295,22 @@ export default function PictureDetect() {
   }
   // this function handles the detection flow of the page  
   async function runDetect() {
-    if (!file) return ;
+    if (!file) return;
     // run the prediction model of the python server
+    setDetecting(true);            // show loading
+    setDetectMessage("");          // clear old messages
     const fd = new FormData();
     fd.append("image", file);
     const res = await fetch(PREDICT_URL, { method: "POST", body: fd });
     if (!res.ok) {
-      console.error("Detect failed", res.status);
+      setDetectMessage("Detection failed. Please try again.");
     }
     // recieve the data from the python server API
     const data = await res.json();
     const arr = Array.isArray(data) ? data : [];
-
+    if (arr.length === 0) {
+      setDetectMessage("No plants were found in this photo.");
+    }
     setRows(arr.map((d, i) => ({
       idx: i + 1,
       label: d.label || "Plant",
@@ -318,6 +324,7 @@ export default function PictureDetect() {
       plantedYear: null,
       notes: "",
     })));
+    setDetecting(false);
   }
 
   async function handleSavePhotoAndPlants() {
@@ -419,16 +426,31 @@ export default function PictureDetect() {
 
             <CustomFileUpload label="upload file" onFileSelect={handleFileChange} />
 
-            <button className="MyGardenSecondMenuButton" onClick={runDetect} disabled={!file} style={{ marginLeft: 8 }}> Detect </button>
+            <button
+              className="MyGardenSecondMenuButton"
+              onClick={runDetect}
+              disabled={!file || detecting}
+              style={{ marginLeft: 8 }}
+            >
+              {detecting ? "Detecting..." : "Detect"}
+            </button>
           </div>
         </div>
+{/* detection status - outside TopBar */}
+{(detecting || detectMessage) && (
+  <div style={{ display: "flex", justifyContent: "center", marginTop: -12, marginBottom: 18 }}>
+    <div style={{ textAlign: "center", fontSize: "1.5rem", fontWeight:"bold",color: detectMessage ? "#ff0000ff" : "#00f867ff" }}>
+      {detecting ? "Detecting... please wait" : detectMessage}
+    </div>
+  </div>
+)}
 
         {/* Saved photos for this area with overlays */}
         {savedPhotos.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 12,justifyItems: "center"  }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 12, justifyItems: "center" }}>
             {savedPhotos.map(p => (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div className="savedPhotoDisplayerMyGarden" key={p.photo_id} style={{ maxWidth: "95vw", border: '1px solid #ddd', padding: 8, borderRadius: 8,alignItems:"center",justifyContent:"center"  }}>
+                <div className="savedPhotoDisplayerMyGarden" key={p.photo_id} style={{ maxWidth: "95vw", border: '1px solid #ddd', padding: 8, borderRadius: 8, alignItems: "center", justifyContent: "center" }}>
                   <div style={{ fontSize: "4vh", color: "white", marginBottom: 4 }}>
                     Photo slot {p.slot} - taken {new Date(p.takenAt).toLocaleString()}
                   </div>
@@ -461,20 +483,20 @@ export default function PictureDetect() {
                     Add plant
                   </button>
                   <button
-          className="myGardenBtn"
-          type="button"
-          onClick={async () => {
-            try{
-              await deletePhoto(p.photo_id);
-              setSavedPlants(prev => prev.filter(pl => pl.photo_id !== p.photo_id));
-              setSavedPhotos(prev => prev.filter(ph => ph.photo_id !== p.photo_id));
-              
-            }catch(e){
-            console.error(e);
-            }
-           }}>
+                    className="myGardenBtn"
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await deletePhoto(p.photo_id);
+                        setSavedPlants(prev => prev.filter(pl => pl.photo_id !== p.photo_id));
+                        setSavedPhotos(prev => prev.filter(ph => ph.photo_id !== p.photo_id));
+
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    }}>
                     delete photo
-          </button>
+                  </button>
                   {/* Global picker modal for adding to any saved photo */}
                   {pickerSavedOpen && savedNew?.photo && (
                     <div
@@ -734,6 +756,14 @@ export default function PictureDetect() {
             </div>
           </div>
         )}
+        {/* detection status - outside TopBar */}
+{(detecting || detectMessage) && (
+  <div style={{ display: "flex", justifyContent: "center", marginTop: -12, marginBottom: 18 }}>
+    <div style={{ textAlign: "center", fontSize: "1.5rem", fontWeight:"bold",color: detectMessage ? "#ff0000ff" : "#00f867ff" }}>
+      {detecting ? "Detecting... please wait" : detectMessage}
+    </div>
+  </div>
+)}
 
 
         {/* Image + overlay */}
