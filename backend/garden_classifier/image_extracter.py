@@ -19,10 +19,10 @@ scnd_model = YOLO(SPECIFIC_MODEL,task='detect')
 PLANT_CLASSES_N     = {"plant", "flower", "tree","cactus"}
 CONTAINER_CLASSES_N = {"pot", "raised_bed", "garden_bed", "grass"}
 
-PLANT_MIN_CONF = 0.60           
-MIN_IOU        = 0.05            # allow small overlaps for big beds
-PRED_CONF_KEEP_ALL = 0.001       # keep everything from model; we filter plants ourselves
-SCND_MIN_CONF = 0.90
+PLANT_MIN_CONF = 0.60           # weight for object detection
+MIN_IOU        = 0.05            # weight for container inferr
+PRED_CONF_KEEP_ALL = 0.001       
+SCND_MIN_CONF = 0.90              # weight for plant detection
 def encode_b64(img):
     ok, buf = cv2.imencode(".jpg", img)
     return base64.b64encode(buf).decode("utf-8") if ok else ""
