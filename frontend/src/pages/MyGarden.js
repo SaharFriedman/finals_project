@@ -48,7 +48,7 @@ export default function PictureDetect() {
     // clear the actual file input so same-file selection will trigger onChange
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
-  
+
   async function waterAllToday() {
     const today = new Date().toISOString().slice(0, 10);
     try {
@@ -437,14 +437,14 @@ export default function PictureDetect() {
             </button>
           </div>
         </div>
-{/* detection status - outside TopBar */}
-{(detecting || detectMessage) && (
-  <div style={{ display: "flex", justifyContent: "center", marginTop: -12, marginBottom: 18 }}>
-    <div style={{ textAlign: "center", fontSize: "1.5rem", fontWeight:"bold",color: detectMessage ? "#ff0000ff" : "#00f867ff" }}>
-      {detecting ? "Detecting... please wait" : detectMessage}
-    </div>
-  </div>
-)}
+        {/* detection status - outside TopBar */}
+        {(detecting || detectMessage) && (
+          <div style={{ display: "flex", justifyContent: "center", marginTop: -12, marginBottom: 18 }}>
+            <div style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: "bold", color: detectMessage ? "#ff0000ff" : "#00f867ff" }}>
+              {detecting ? "Detecting... please wait" : detectMessage}
+            </div>
+          </div>
+        )}
 
         {/* Saved photos for this area with overlays */}
         {savedPhotos.length > 0 && (
@@ -758,13 +758,13 @@ export default function PictureDetect() {
           </div>
         )}
         {/* detection status - outside TopBar */}
-{(detecting || detectMessage) && (
-  <div style={{ display: "flex", justifyContent: "center", marginTop: -12, marginBottom: 18 }}>
-    <div style={{ textAlign: "center", fontSize: "1.5rem", fontWeight:"bold",color: detectMessage ? "#ff0000ff" : "#00f867ff" }}>
-      {detecting ? "Detecting... please wait" : detectMessage}
-    </div>
-  </div>
-)}
+        {(detecting || detectMessage) && (
+          <div style={{ display: "flex", justifyContent: "center", marginTop: -12, marginBottom: 18 }}>
+            <div style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: "bold", color: detectMessage ? "#ff0000ff" : "#00f867ff" }}>
+              {detecting ? "Detecting... please wait" : detectMessage}
+            </div>
+          </div>
+        )}
 
 
         {/* Image + overlay */}
@@ -886,12 +886,13 @@ export default function PictureDetect() {
               <h3>Coords</h3>
               <div className="labelOfContainerInfo">
                 <div className="labelOfContainerInfo">
-                  <code>{savedNew.coords ? JSON.stringify(savedNew.coords) : "(pick on photo above)"}</code>
+                  <code>{newRow?.coords ? JSON.stringify(newRow.coords) : "(pick on photo above)"}</code>
                 </div>
                 <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
                   Click and drag on the image to draw a rectangle - coordinates are saved as [x1, y1, x2, y2] in pixels.
                 </div>
               </div>
+
 
               <h3>Notes</h3>
               <div className="labelOfContainerInfo">
