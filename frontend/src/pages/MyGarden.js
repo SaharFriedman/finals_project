@@ -48,6 +48,7 @@ export default function PictureDetect() {
     // clear the actual file input so same-file selection will trigger onChange
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
+  
   async function waterAllToday() {
     const today = new Date().toISOString().slice(0, 10);
     try {

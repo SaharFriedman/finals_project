@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { authHeaders } from "../api/http";
-import { postTip } from "../api/helper";
+import { postTip, loadLatestTip } from "../api/helper";
 import TopBar from "../art/components/topbar.js";
 import DailyTip from "../art/components/dailyTip.js";
 import Background from "../art/components/Background.js";
@@ -292,6 +292,7 @@ function compactPlants(plants) {
   }));
 }
 
+
 // verifying plantDoc name until finalized project
 function normalizePlantDoc(d) {
   const label =
@@ -538,35 +539,20 @@ function parseTipText(text) {
 
 async function callTip(systemMessage, developerMessage, chatPrompt) {
   const userPrompt = JSON.stringify(chatPrompt);
-  const out = await postTip({
-    system: systemMessage,
-    developer: developerMessage,
-    user: userPrompt
-  });
-  const tip = parseTipText(out.text);
-  return tip;
-}
-
-
-//change this section to actualy work = this is just generic/////////////////////////////////////////////////////////
-function loadRecentTips() {
-  try { return JSON.parse(localStorage.getItem("recent_tips") || "[]").slice(-10); }
-  catch { return []; }
-}
-function saveRecentTip(tipJson) {
   try {
-    const arr = loadRecentTips();
-    const tag = tipJson?.daily_tip?.topic_tag || "unknown";
-    const msg = tipJson?.daily_tip?.message || "";
-    arr.push({
-      topic_tag: tag,
-      plant_ids: tipJson?.daily_tip?.plant_ids || [],
-      message_norm: msg.toLowerCase().replace(/[^\w\s]/g, ""),
-      date: new Date().toISOString().slice(0, 10)
+    const out = await postTip({
+      system: systemMessage,
+      developer: developerMessage,
+      user: userPrompt
     });
-    localStorage.setItem("recent_tips", JSON.stringify(arr.slice(-10)));
-  } catch { }
+
+    const tip = parseTipText(out.text);
+    return tip;
+  } catch (err) {
+    alert(`Failed to generate tip: ${err.message}`);
+  }
 }
+
 //TODO: change this section to work with mongoDB = this is just generic/////////////////////////////////////////////////////////
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -583,11 +569,60 @@ const Welcome = () => {
   const [debugPrompt, setDebugPrompt] = useState(null);
   const [debugWeather, setDebugWeather] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const latest = await loadLatestTip();              // { tip, createdAt } or null
+        if (!alive || !latest || !latest.tip) return;
+
+        const last = normalizeLatestTipToObject(latest.tip);
+
+        const topicSlides = (last.topics || [])
+          .filter(t => t && t.include)
+          .map(t => {
+            const isBaseTag = BASE_TAGS.has(t.topic_tag);
+            const photo = isBaseTag ? topicImages[t.topic_tag] : fallbackImg;
+            return { photo, text: t.header, body: t.body, ref: `/topics/${t.topic_tag}` };
+          });
+
+        setAi({ recommendations: [last], explanation: "", slides: topicSlides });
+        setSlides(topicSlides);
+      } catch (e) {
+        console.warn("loadLatestTip failed:", e);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+
+  //parsing saved recommend from LLM
+  function parseFencedJSONOrThrow(s) {
+    // Expect exactly a Markdown code fence that starts with ```json and ends with ```
+    if (typeof s !== "string") throw new Error("tip is not a string");
+    if (!s.startsWith("```json")) throw new Error("tip is not ```json fenced");
+    const end = s.lastIndexOf("```");
+    if (end <= 0) throw new Error("missing closing ``` fence");
+    const body = s.slice(s.indexOf("\n") + 1, end); // drop the first line ```json
+    return JSON.parse(body);
+  }
+// there are scenarios that JSON and scenarios when PARSED (depend on server/LLM)
+function normalizeLatestTipToObject(tip) {
+  // Accept exactly two shapes: ```json fenced string OR already-parsed object
+  if (tip && typeof tip === "string" && tip.startsWith("```json")) {
+    return parseFencedJSONOrThrow(tip);
+  }
+  if (tip && typeof tip === "object") {
+    return tip;
+  }
+  throw new Error("latest tip is missing or not in an expected format");
+}
+
   // this function creates the garden recommandation scheme and the output is the recommendation that is presented to the user
   async function buildAndSendGardenPlan() {
     setError("");
     setLoading(true);
-    
+
     try {
       // 1 - geolocation
       const coords = await new Promise((resolve, reject) => {
@@ -644,8 +679,26 @@ const Welcome = () => {
       const calendarYMD = new Date(isoDate).toISOString().slice(0, 10);
       const weather = toWeatherFromSummary(weather_summary, weeklyOutlook);
       const plants_by_area = groupPlantsByArea(flat);
-      const recent_tips = sanitizeRecentTips(loadRecentTips());
-      const recent_topics = loadRecentTopics(); // optional helper from earlier
+      let recent_tips = [];
+      try {
+        const latestResp = await loadLatestTip();
+        const latestObj = latestResp && latestResp.tip
+          ? normalizeLatestTipToObject(latestResp.tip)
+          : null;
+
+        const recentSeed = [
+          ...(Array.isArray(latestObj?.topics) ? latestObj.topics : []),
+          latestObj?.daily_tip
+            ? { topic_tag: latestObj.daily_tip.topic_tag, message_norm: latestObj.daily_tip.message }
+            : null,
+        ].filter(Boolean);
+
+        recent_tips = await sanitizeRecentTips(recentSeed);
+      } catch {
+        recent_tips = [];
+      }
+
+      const recent_topics = loadRecentTopics();
 
       const knowledge = {
         regional_windows: [],
@@ -665,7 +718,7 @@ const Welcome = () => {
         knowledge,
         ...(prevWeekFeatures ? { prev_week_features: prevWeekFeatures } : {})
       });
-
+      console.log(userPayload);
       // debug
       setDebugPrompt({ system: systemMessage, developer: developerMessage, user: userPayload });
 
@@ -690,8 +743,6 @@ const Welcome = () => {
 
       setAi({ recommendations: [tip], explanation: "", slides: topicSlides });
       setSlides(topicSlides);
-      // 9 - store
-      saveRecentTip(tip);
     } catch (e) {
       console.error(e);
       setError(e.message || "Unknown error");
@@ -708,14 +759,14 @@ const Welcome = () => {
       {loading && <Loading text="Fetching your garden plan..." />}
       <div style={{ overflowX: "hidden", overflowY: "auto", position: "sticky" }}>
         <div >
-          <TopBar btn1={<MyGardenButton/>} btn2={<MyHelper/>}/>
+          <TopBar btn1={<MyGardenButton />} btn2={<MyHelper />} />
           <DailyTip
             header={ai.recommendations[0]?.daily_tip?.header || ""}
             subheader={ai.recommendations[0]?.daily_tip?.subheader || ""}
-            content={ai.recommendations[0]?.daily_tip?.message || ""}
+            content={ai.recommendations[0]?.daily_tip?.message || "press the demo button to start"}
           />
           <SlideShow slidesComponents={slides} title="Ready for the week ahead" />
-           <button
+          <button
             type="button"
             onClick={buildAndSendGardenPlan}
             disabled={loading}

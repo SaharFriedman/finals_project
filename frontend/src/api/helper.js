@@ -21,6 +21,21 @@ export async function postTip({ system, developer, user, area_id }) {
   }
   return res.json();
 }
+export async function loadLatestTip() {
+  const res = await fetch(`${API_BASE}/chat/tip/recent`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    // log full server reply for debugging
+    console.error("loadLatestTip error:", res.status, res.statusText, body);
+    throw new Error(`loadLatestTip failed: ${res.status} ${res.statusText}`);
+  }
+
+  // success
+  return res.json(); // expect { tip, createdAt } or null
+}
 
 export async function postChat(message) {
   const res = await fetch(`${API_BASE}/chat`, {
@@ -47,3 +62,5 @@ export async function listEvents(plantId) {
   if (!res.ok) throw new Error("list events failed");
   return res.json();
 }
+
+

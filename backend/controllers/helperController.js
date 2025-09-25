@@ -15,7 +15,7 @@ const toolDefs = [
     type: "function",
     function: {
       name: "get_plant",
-    description: "Fetch a single plant and its full context for grounding: area_id, photo_id, slot, photo url and size, and bbox for the plant on that photo.",
+      description: "Fetch a single plant and its full context for grounding: area_id, photo_id, slot, photo url and size, and bbox for the plant on that photo.",
       parameters: {
         type: "object",
         properties: {
@@ -241,8 +241,9 @@ exports.tip = async (req, res) => {
     ];
     const out = await callLLM(messages);
     const text = out.text;
-    await TipMessage.create({ userId, text });
+    const saved = await TipMessage.create({ userId, text });
     return res.json(out);
+
   } catch (err) {
     return res.status(500).json({ error: "tip failed", details: err.message || String(err) });
   }
@@ -294,6 +295,31 @@ exports.listEvents = async (req, res) => {
     })));
   } catch (e) {
     console.error("helper.listEvents error", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+};
+
+
+// GET /api/chat/tip/recent
+exports.loadRecentTip = async (req, res) => {
+  try {
+    const userId = toOid(req.userId);
+    if (!userId) return res.status(401).json({ error: "unauthorized" });
+
+    // was: .sort({ createdAt: -1 })
+    const doc = await TipMessage
+      .findOne({ userId })
+      .sort({ _id: -1 })           // newest insert first
+      .lean();
+
+    if (!doc) return res.json(null);
+
+    let parsed = null;
+    try { parsed = JSON.parse(doc.text); } catch { }
+
+    return res.json({ tip: parsed || doc.text, createdAt: doc.createdAt });
+  } catch (e) {
+    console.error("loadRecentTip error:", e);
     res.status(500).json({ error: "internal_error" });
   }
 };
