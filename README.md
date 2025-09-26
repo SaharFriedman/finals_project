@@ -61,7 +61,6 @@ docker compose down
 
 ---
 ## Project Structure
-Here’s the file tree (base is `finals_project/`):
 
 ```
 backend/
