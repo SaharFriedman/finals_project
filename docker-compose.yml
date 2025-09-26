@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  pyserver:
+    build:
+      context: ./backend/garden_classifier
+      dockerfile: Dockerfile.pyserver
+    environment:
+      - PY_PORT=2021
+      - YOLO_CONFIG_DIR=/app/.ultralytics
+    # bind to localhost and use a different host port to dodge Windows reservations
+    ports:
+      - "127.0.0.1:2021:2021"
+    # mount your actual weights folder
+    volumes:
+      - ./backend/garden_classifier/models:/models:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:2021/weather?location=0,0&flag=0"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 25s
+    restart: unless-stopped
+    expose:
+    - "2021"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.web-server
+    # if your backend listens on 12345, publish it here. adjust if different
+    ports:
+      - "127.0.0.1:12345:12345"
+    depends_on:
+      - pyserver
+    restart: unless-stopped
+    environment:
+      - PORT=12345
+      - MONGO_URI=mongodb://host.docker.internal:27017/gardens
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.react-app
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
