@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
 const { imageSize } = require("image-size");
-
 const Area = require("../models/area");
 const Photo = require("../models/photos");
 const Plant = require("../models/plant");

@@ -6,13 +6,12 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 import base64
-import cv2
 import numpy as np
 import weatherAPI as WAPI
 
 # model configuration
-MODEL_PATH = "my_model.pt"
-SPECIFIC_MODEL = "specific_plant_model.pt"
+MODEL_PATH = "/models/my_model.pt"
+SPECIFIC_MODEL = "/models/specific_plant_model.pt"
 model = YOLO(MODEL_PATH, task='detect')
 scnd_model = YOLO(SPECIFIC_MODEL,task='detect')
 
@@ -173,4 +172,6 @@ def weather():
     weatherJSON = WAPI.start(weather_string,0)
     return weatherJSON
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=2021, debug=False)
+    import os
+    port = int(os.getenv("PY_PORT", "2021"))
+    app.run(host="0.0.0.0", port=port, debug=False)

@@ -1,0 +1,12 @@
+flask
+flask-cors
+ultralytics
+opencv-python-headless
+numpy
+requests
+geopy
+openmeteo-requests
+requests-cache
+retry-requests
+astral
+pytz

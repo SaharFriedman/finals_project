@@ -12,7 +12,8 @@ app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 //We are connecting to the mongodb database.
-mongoose.connect('mongodb://127.0.0.1:27017/gardens');
+const MONGO_URL = process.env.MONGO_URL || 'mongodb://host.docker.internal:27017/gardens';
+mongoose.connect(MONGO_URL);
 //we create a route for the identify endpoint.
 const signup = require('./routes/signup');
 const token = require('./routes/token');
@@ -34,7 +35,8 @@ const path = require("path");
 app.use("/static/photos",
   express.static(path.join(process.cwd(), "uploads/photos"))
 );
-app.listen(12345 , () => {
-    console.log('Server is running on port 12345');
+const PORT = parseInt(process.env.API_PORT || '12345', 10);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
 
