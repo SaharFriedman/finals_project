@@ -1,11 +1,18 @@
-# 🌱 MyGarden Project
+🌱 Finals Project – Smart Garden Assistant
 
-A full-stack interactive gardening assistant built with React, Node.js, Python (YOLO model), and MongoDB.  
-This project was designed as a final project by **Sahar Friedman** and **Adar Kliger**.
+Welcome to **MyGarden** – a fun, interactive project that combines computer vision, Node.js, and a React frontend to help manage your garden.  
+It’s our final project, built with love, some sleepless nights, and lots of plants 🌿.
+
+## What it does
+- Detects plants in your photos using YOLO models.
+- Provides an interactive web UI to explore your garden.
+- Hooks into a Python microservice for image recognition (and optional weather data).
+- Stores garden info in MongoDB.
+ by **Sahar Friedman** and **Adar Kliger**.
 
 ---
 
-## 🚀 Run Instructions
+## Run Instructions
 
 ### 1. Clone the repository
 ```bash
@@ -53,7 +60,46 @@ docker compose down
 - If a port (3000, 12345, or 2021) is already in use on your system, adjust it in `docker-compose.yml`.
 
 ---
+## Project Structure
+Here’s the file tree (base is `finals_project/`):
 
+```
+backend/
+ ├─ app.js                  # Main Node.js backend server
+ ├─ controllers/            # Backend controllers
+ ├─ middleware/             # Express middleware
+ ├─ models/                 # Mongoose models
+ ├─ routes/                 # Express routes
+ ├─ services/               # Service logic
+ ├─ uploads/                # Photo uploads
+ └─ garden_classifier/      
+     ├─ image_extracter.py  # Python Flask server for YOLO plant detection
+     ├─ weatherAPI.py       # (Optional) weather and sun data API
+     ├─ requirements.txt    # Python dependencies
+     └─ models/             
+         ├─ my_model.pt             # YOLO trained model
+         └─ specific_plant_model.pt # Specialized plant model
+
+frontend/
+ ├─ src/
+ │   ├─ App.js              # Main React app
+ │   ├─ App.css             # Global styles
+ │   ├─ index.js            # React entry point
+ │   ├─ api/                # API calls to backend
+ │   ├─ art/                # UI art and assets
+ │   ├─ auth/               # Auth context and helpers
+ │   ├─ components/         # React components
+ │   └─ pages/             
+ │       ├─ Home.js
+ │       ├─ MyGarden.js
+ │       ├─ MyHelper.js
+ │       └─ Welcome.js
+
+docker-compose.yml          # Compose stack: frontend, backend, python server
+.env                        # Environment variables
+README.md                   # You’re reading it 😉
+```
 ## 👩‍💻 Authors
 - Sahar Friedman
 - Adar Kliger
+Happy gardening! 
