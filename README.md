@@ -23,7 +23,7 @@ docker compose up -d --build
 ```
 
 This will start the following services:
-- **frontend** → React app (default on `http://localhost:3001`)
+- **frontend** → React app (default on `http://localhost:3000`)
 - **backend** → Node.js API + WebSocket server (default on `http://localhost:12345`)
 - **pyserver** → Python YOLO model server (default on `http://localhost:2021`)
 - **mongodb** → MongoDB database (default on `mongodb://localhost:27017`)
