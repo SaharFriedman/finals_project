@@ -29,7 +29,7 @@ This will start the following services:
 - **mongodb** → MongoDB database (default on `mongodb://localhost:27017`)
 
 ### 4. Access the app
-- Open your browser at: **[http://localhost:3001](http://localhost:3001)**
+- Open your browser at: **[http://localhost:3000](http://localhost:3000)**
 - Backend API: [http://localhost:12345](http://localhost:12345)
 - Python model API (direct): [http://localhost:2021](http://localhost:2021)
 - MongoDB: connect via MongoDB Compass using
@@ -50,7 +50,7 @@ docker compose down
   ```bash
   docker compose build
   ```
-- If a port (3001, 12345, or 2021) is already in use on your system, adjust it in `docker-compose.yml`.
+- If a port (3000, 12345, or 2021) is already in use on your system, adjust it in `docker-compose.yml`.
 
 ---
 
