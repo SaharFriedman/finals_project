@@ -100,5 +100,5 @@ README.md                   # You’re reading it 😉
 ```
 ## 👩‍💻 Authors
 - Sahar Friedman
-- Adar Kliger
+- Adar Kliger  
 Happy gardening! 
