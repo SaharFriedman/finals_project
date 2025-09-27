@@ -24,14 +24,23 @@ export default function PictureDetect() {
   const [areas, setAreas] = useState([]);
   // to find which area the user is currently looking at
   const [selectedAreaId, setSelectedAreaId] = useState("");
+  // staging object for adding a new plant into an already saved photo
   const [savedNew, setSavedNew] = useState(null);
+  // controls the model that lets the user draw a box on a saved photo
   const [pickerSavedOpen, setPickerSavedOpen] = useState(false);
+  // DOM ref for the saved-photo image inside the picker modal
   const savedImgRef = useRef(null);
+  // staging row for adding a new detection to the current unsaved upload
   const [newRow, setNewRow] = useState(null);
+  // controls the picker over the currently uploaded but unsaved image
   const [pickerOpen, setPickerOpen] = useState(false);
+  // DOM ref for the uploaded image used by the on-page picker
   const imgPickRef = useRef(null);
+  // file input element so you can clear it programmatically after save or reset
   const fileInputRef = useRef(null);
+  // shows detection spinner while the Python server is processing
   const [detecting, setDetecting] = useState(false);
+  // human friendly status message after detection completes or fails
   const [detectMessage, setDetectMessage] = useState("");
 
   function resetUploadState() {
@@ -498,7 +507,7 @@ export default function PictureDetect() {
                     }}>
                     delete photo
                   </button>
-                  {/* Global picker modal for adding to any saved photo */}
+                  {/* Global picker model for adding to any saved photo */}
                   {pickerSavedOpen && savedNew?.photo && (
                     <div
                       style={{

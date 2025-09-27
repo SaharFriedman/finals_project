@@ -8,7 +8,7 @@ createToken = async (req,res) =>{
         return res.status(err.status).send(err.message);
     }
 };
-// controllers/token.js
+
 const isLoggedIn = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || '';
@@ -33,6 +33,5 @@ const isLoggedIn = async (req, res, next) => {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
 };
-
 
 module.exports = { createToken ,isLoggedIn};

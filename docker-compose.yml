@@ -25,6 +25,8 @@ services:
     - "2021"
 
   backend:
+    volumes:
+      - ./backend/uploads/photos:/app/uploads/photos
     build:
       context: ./backend
       dockerfile: Dockerfile.web-server

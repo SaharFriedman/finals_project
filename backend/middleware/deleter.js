@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-
+// this is the diractory where plants pictures are being saved
 const PHOTOS_DIR = path.resolve(__dirname, '../uploads/photos');
-
+// handling photo deletion
 const deleteFiles = async (names) => {
   const results = [];
 

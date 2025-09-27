@@ -1,15 +1,15 @@
+// imports
 const mongoose = require("mongoose");
-const Area = require("../models/area");
 const Plant = require("../models/plant");
-const Photo = require("../models/photos");
 const ChatMessage = require("../models/chat");
 const TipMessage = require("../models/tip")
 const { tools } = require("../services/tools");
-
 const { callLLM, callLLMForChat } = require("../services/llm");
 
+// recieving from frontent the object id as string -> validating and returning mongoDB ID as object
 const toOid = (v) => (v && mongoose.Types.ObjectId.isValid(v) ? new mongoose.Types.ObjectId(v) : null);
 
+// this is all of the tools that the helper can help with
 const toolDefs = [
   {
     type: "function",
@@ -79,6 +79,7 @@ async function getContext(userId) {
   }));
 }
 // GET /api/helper/context
+// purpose - retreiving all of the plants data
 exports.getContext = async (req, res) => {
   try {
     const userId = toOid(req.userId);
@@ -210,7 +211,6 @@ Style rules:
   }
 }
 
-
 // POST /api/helper/chat/tip
 // this function post the tip to the LLM
 exports.tip = async (req, res) => {
@@ -248,75 +248,19 @@ exports.tip = async (req, res) => {
     return res.status(500).json({ error: "tip failed", details: err.message || String(err) });
   }
 };
-
-
-// POST /api/helper/events - simple logger
-exports.createEvent = async (req, res) => {
-  try {
-    const userId = toOid(req.userId);
-    if (!userId) return res.status(401).json({ error: "unauthorized" });
-
-    const { area_id, plant_id, type, amount, units, notes, happened_at } = req.body || {};
-    const rec = await Event.create({
-      userId,
-      areaId: toOid(area_id),
-      plantId: toOid(plant_id),
-      type,
-      amount,
-      units,
-      notes,
-      happenedAt: happened_at ? new Date(happened_at) : new Date(),
-      source: "user"
-    });
-    res.json({ id: String(rec._id) });
-  } catch (e) {
-    console.error("helper.createEvent error", e);
-    res.status(500).json({ error: "internal_error" });
-  }
-};
-
-// GET /api/helper/events?plant_id=
-exports.listEvents = async (req, res) => {
-  try {
-    const userId = toOid(req.userId);
-    if (!userId) return res.status(401).json({ error: "unauthorized" });
-    const plantId = toOid(req.query.plant_id);
-    const q = { userId };
-    if (plantId) q.plantId = plantId;
-    const rows = await Event.find(q).sort({ happenedAt: -1 }).limit(200).lean();
-    res.json(rows.map(r => ({
-      id: String(r._id),
-      type: r.type,
-      plantId: r.plantId ? String(r.plantId) : null,
-      amount: r.amount,
-      units: r.units,
-      happenedAt: r.happenedAt,
-      notes: r.notes
-    })));
-  } catch (e) {
-    console.error("helper.listEvents error", e);
-    res.status(500).json({ error: "internal_error" });
-  }
-};
-
-
 // GET /api/chat/tip/recent
+// this retrieves the last tip - simulating a weekly driven recommendation
 exports.loadRecentTip = async (req, res) => {
   try {
     const userId = toOid(req.userId);
     if (!userId) return res.status(401).json({ error: "unauthorized" });
-
-    // was: .sort({ createdAt: -1 })
     const doc = await TipMessage
       .findOne({ userId })
-      .sort({ _id: -1 })           // newest insert first
+      .sort({ _id: -1 })          
       .lean();
-
     if (!doc) return res.json(null);
-
     let parsed = null;
     try { parsed = JSON.parse(doc.text); } catch { }
-
     return res.json({ tip: parsed || doc.text, createdAt: doc.createdAt });
   } catch (e) {
     console.error("loadRecentTip error:", e);

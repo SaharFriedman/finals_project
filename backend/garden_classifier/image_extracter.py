@@ -9,19 +9,25 @@ import base64
 import numpy as np
 import weatherAPI as WAPI
 
-# model configuration
-MODEL_PATH = "/models/my_model.pt"
-SPECIFIC_MODEL = "/models/specific_plant_model.pt"
-model = YOLO(MODEL_PATH, task='detect')
-scnd_model = YOLO(SPECIFIC_MODEL,task='detect')
+### ------------------------- plants model configuration -------------------------------------- ###
 
+MODEL_PATH = "/models/my_model.pt" 
+SPECIFIC_MODEL = "/models/specific_plant_model.pt" 
+model = YOLO(MODEL_PATH, task='detect') # object detection model 
+scnd_model = YOLO(SPECIFIC_MODEL,task='detect') # specific plant detection
+
+# defining the classes names as the model call 
 PLANT_CLASSES_N     = {"plant", "flower", "tree","cactus"}
 CONTAINER_CLASSES_N = {"pot", "raised_bed", "garden_bed", "grass"}
 
+# model configuration - controlling accuracy and system detection constants
 PLANT_MIN_CONF = 0.60           # weight for object detection
 MIN_IOU        = 0.05            # weight for container inferr
 PRED_CONF_KEEP_ALL = 0.001       
 SCND_MIN_CONF = 0.90              # weight for plant detection
+
+### ------------------------- helper functions -------------------------------------- ###
+
 def encode_b64(img):
     ok, buf = cv2.imencode(".jpg", img)
     return base64.b64encode(buf).decode("utf-8") if ok else ""
@@ -30,15 +36,26 @@ def clamp(x1,y1,x2,y2,w,h):
     x1 = max(0, min(int(x1), w-1)); x2 = max(0, min(int(x2), w-1))
     y1 = max(0, min(int(y1), h-1)); y2 = max(0, min(int(y2), h-1))
     return None if x2<=x1 or y2<=y1 else [x1,y1,x2,y2]
-
+# Intersection over Union is a function in computer vision that computes a metric
+#  between two bounding boxes that measures how much two boxes overlap compared to their total area. 
+# this metric is mostly used for measuring the distance between ground truth and the bounding box so we'll know how well the model work.
+# although, we used it for a simple idea - why not use it as a simple spatial reasoning tool? the answer - it works well!
+# the iou formula is simple - area of intersection / Area of union (union = area_a + area_b - inter)
 def iou(a,b):
+    # format is [x1,y1,x2,y2] representing top left and bottom right coordinates respectively
     ax1,ay1,ax2,ay2 = a; bx1,by1,bx2,by2 = b
+    # computing the top left corner of the intersection
     ix1, iy1 = max(ax1,bx1), max(ay1,by1)
+    # computing the bottom right corner of the intersection
     ix2, iy2 = min(ax2,bx2), min(ay2,by2)
+    # computing the size of height and width of intersection
     iw, ih = max(0, ix2-ix1), max(0, iy2-iy1)
+    # the area of intersection
     inter = iw*ih
     if inter == 0: return 0.0
+    # the area of a and b
     area_a = (ax2-ax1)*(ay2-ay1); area_b = (bx2-bx1)*(by2-by1)
+    # compute the iou + a small constant handeling 0 division
     return inter / (area_a + area_b - inter + 1e-9)
 
 # ---- label helpers ----
@@ -67,6 +84,31 @@ def canonical_container(lbl_n: str) -> str:
         return lbl_n
     return "unknown"
 
+def identify_species(crop_bgr: np.ndarray):
+    if scnd_model is None or crop_bgr is None or crop_bgr.size == 0:
+        return None, None, 0.0
+
+    # predict on the crop
+    res = scnd_model.predict(crop_bgr, conf=SCND_MIN_CONF, verbose=False)[0]
+    names = res.names
+    best = None
+    best_conf = -1.0
+    for xyxy, cls, conf in zip(res.boxes.xyxy.tolist(),
+                               res.boxes.cls.tolist(),
+                               res.boxes.conf.tolist()):
+        raw = names[int(cls)]
+        n   = norm_label(raw)
+        if n in SCND_CLASSES_N:
+            c = float(conf)
+            if c > best_conf:
+                best = (raw, n, c)
+                best_conf = c
+    if best is None:
+        return None, None, 0.0
+    return best
+
+### ------------------------- server routes and functionality -------------------------------------- ###
+# this is the plant detection function
 @app.post("/predict")
 def predict():
     req = request.files["image"]
@@ -140,29 +182,8 @@ def predict():
         })
 
     return jsonify(out)
-def identify_species(crop_bgr: np.ndarray):
-    if scnd_model is None or crop_bgr is None or crop_bgr.size == 0:
-        return None, None, 0.0
 
-    # predict on the crop
-    res = scnd_model.predict(crop_bgr, conf=SCND_MIN_CONF, verbose=False)[0]
-    names = res.names
-    best = None
-    best_conf = -1.0
-    for xyxy, cls, conf in zip(res.boxes.xyxy.tolist(),
-                               res.boxes.cls.tolist(),
-                               res.boxes.conf.tolist()):
-        raw = names[int(cls)]
-        n   = norm_label(raw)
-        if n in SCND_CLASSES_N:
-            c = float(conf)
-            if c > best_conf:
-                best = (raw, n, c)
-                best_conf = c
-    if best is None:
-        return None, None, 0.0
-    return best
-
+# this is the weather method
 @app.route("/weather", methods=["POST"])
 def weather():
     data = request.get_json()  # parse JSON body
@@ -171,6 +192,8 @@ def weather():
     weather_string = str(lat) + "," + str(lon)
     weatherJSON = WAPI.start(weather_string,0)
     return weatherJSON
+
+# configuration of the server itself
 if __name__ == "__main__":
     import os
     port = int(os.getenv("PY_PORT", "2021"))
