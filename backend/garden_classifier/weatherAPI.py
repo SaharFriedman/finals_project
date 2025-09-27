@@ -1,5 +1,4 @@
 import json
-import requests
 from geopy.geocoders import Nominatim
 from datetime import datetime, timezone, timedelta
 import openmeteo_requests
@@ -8,12 +7,14 @@ from retry_requests import retry
 from astral import LocationInfo
 from astral.sun import sun
 
+# Computes summary features for the previous week from hourly weather data
 def compute_prev_week_features(hourly):
     times = hourly["time"]
     temps = hourly["temperature_2m"]
     precs = hourly["precipitation"]
     ws    = hourly.get("windspeed_10m", [])
 
+    # Aggregate hourly data into daily buckets
     daily = {}
     for i, ts in enumerate(times):
         day = ts[:10]
@@ -22,6 +23,7 @@ def compute_prev_week_features(hourly):
         d["precs"].append(precs[i])
         if ws: d["winds"].append(ws[i])
 
+    # Get previous 7 days (excluding today)
     today = datetime.now(timezone.utc).date()
     prev_days = [d for d in sorted(daily.keys()) if datetime.fromisoformat(d).date() < today]
     prev7 = prev_days[-7:]
@@ -29,6 +31,7 @@ def compute_prev_week_features(hourly):
     if not prev7:
         return None
 
+    # Calculate summary statistics
     tmaxes, tmins = [], []
     total_rain = 0.0
     windy_days = 0
@@ -47,6 +50,7 @@ def compute_prev_week_features(hourly):
         "windy_days": windy_days
     }
 
+# Geocodes a location name to latitude and longitude using Nominatim
 def get_coordinates(location_name):
     geolocator = Nominatim(user_agent="weather_app")
     location = geolocator.geocode(location_name, timeout=10)
@@ -54,6 +58,7 @@ def get_coordinates(location_name):
         raise ValueError(f"Location '{location_name}' not found")
     return location.latitude, location.longitude
 
+# Summarizes the next week's forecast from hourly data
 def summarize_next_week(data):
     times = data["hourly"]["time"]
     temps = data["hourly"]["temperature_2m"]
@@ -61,6 +66,7 @@ def summarize_next_week(data):
     ws = data["hourly"].get("windspeed_10m", [])
     uvi = data["hourly"].get("uv_index", [])
 
+    # Aggregate hourly data into daily buckets
     daily = {}
     for i, ts in enumerate(times):
         day = ts[:10]
@@ -70,6 +76,7 @@ def summarize_next_week(data):
         if ws: d["winds"].append(ws[i])
         if uvi: d["uvis"].append(uvi[i])
 
+    # Build daily summaries for the next 7 days
     today_ymd = datetime.now(timezone.utc).date().isoformat()
     out = []
     for day in sorted(daily.keys()):
@@ -92,6 +99,7 @@ def summarize_next_week(data):
         out.append(rec)
     return out[:7]
 
+# Fetches weather forecast data from Open-Meteo API for given coordinates
 def get_weather_forecast(lat, lon):
     cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
     retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
@@ -113,11 +121,10 @@ def get_weather_forecast(lat, lon):
     tz = response.Timezone() or "UTC"
     timezone_str = str(tz, 'utf-8') if isinstance(tz, bytes) else tz
 
-    # Build hourly arrays manually
+    # Build hourly arrays manually from API response
     t0 = response.Hourly().Time()
     t1 = response.Hourly().TimeEnd()
     step = response.Hourly().Interval()
-    # Rebuild the hourly timestamps as ISO strings
     times = []
     t = t0
     while t < t1:
@@ -133,6 +140,7 @@ def get_weather_forecast(lat, lon):
         "uv_index":       hourly.Variables(3).ValuesAsNumpy().tolist()
     }
 
+    # Calculate sun position data for the next days
     sun_data = calculate_sun_position(float(lat), float(lon), timezone_str, 6)
 
     return {
@@ -148,6 +156,7 @@ def get_weather_forecast(lat, lon):
         "daily": sun_data
     }
 
+# Calculates sun position and daylight info for a location for several days
 def calculate_sun_position(lat, lon, timezone_str, days=6):
     import pytz
     sun_data = []
@@ -203,6 +212,7 @@ def calculate_sun_position(lat, lon, timezone_str, days=6):
             })
     return sun_data
 
+# Summarizes hourly forecast data into daily averages and totals
 def summarize_forecast(data):
     time_list = data["hourly"]["time"]
     temps = data["hourly"]["temperature_2m"]
@@ -227,6 +237,7 @@ def summarize_forecast(data):
         })
     return summarized
 
+# Recursively converts bytes objects to strings in nested data structures
 def convert_bytes(obj):
     if isinstance(obj, bytes):
         try:
@@ -239,6 +250,7 @@ def convert_bytes(obj):
         return [convert_bytes(v) for v in obj]
     return obj
 
+# Main entry point: gets weather data for a location and returns a JSON summary
 def start(location_name, flag):
     if flag != 0:
         lat, lon = get_coordinates(location_name)

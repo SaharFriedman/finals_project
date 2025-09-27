@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+// this saves all of the plants for each user, monitoring and special care for each plant there is for the best performence and personalize experience
 const PlantSchema = new mongoose.Schema({
   userId:     { type: mongoose.Schema.Types.ObjectId, ref: "User",  required: true },
   areaId:     { type: mongoose.Schema.Types.ObjectId, ref: "Area",  required: true },

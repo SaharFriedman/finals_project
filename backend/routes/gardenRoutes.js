@@ -1,11 +1,11 @@
+// imports
 const express = require("express");
 const router = express.Router();
 const ctrl = require("../controllers/gardenController");
-
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
-
+// directory of saved area pictures 
 const PHOTOS_DIR = path.join(process.cwd(), "uploads/photos");
 
 // ensure folder exists

@@ -1,17 +1,21 @@
+// imports
 const mongoose = require("mongoose");
 const fs = require("fs");
-const path = require("path");
 const { imageSize } = require("image-size");
 const Area = require("../models/area");
 const Photo = require("../models/photos");
 const Plant = require("../models/plant");
 const deleter = require("../middleware/deleter")
+
+// recieving from frontent the object id as string -> validating and returning mongoDB ID as object
 const toOid = (v) =>
   (v && mongoose.Types.ObjectId.isValid(v) ? new mongoose.Types.ObjectId(v) : null);
+
 
 // ---------- AREAS ----------
 /**
  * GET /api/gardenRoutes/areas?user_id=<oid>
+ * purpose: finding all of the areas the user have
  */
 exports.listAreas = async (req, res) => {
   try {
@@ -30,11 +34,14 @@ exports.listAreas = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 };
+
+// helper function to regenerate names without special characters
 function escapeRegExp(s = '') { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 /**
  * POST /api/gardenRoutes/areas
  * Body: { user_id, name? }  -> auto "Area N" if name missing
+ * purpose: creating an area for a user. default: "Area {area number}"
  */
 exports.createArea = async (req, res) => {
   try {
@@ -75,6 +82,7 @@ exports.createArea = async (req, res) => {
 /**
  * PATCH /api/gardenRoutes/areas/:id
  * Body: { user_id, name }
+ * purpose: editing the area name
  */
 exports.renameArea = async (req, res) => {
   try {
@@ -107,6 +115,7 @@ exports.renameArea = async (req, res) => {
 };
 /**
  * DELETE /api/gardenRoutes/areas/:id
+ * purpose: deleting an area by the area's id
  */
 exports.deleteArea = async (req, res) => {
   try {
@@ -124,6 +133,7 @@ exports.deleteArea = async (req, res) => {
 
 /**
  * POST /api/gardenRoutes/photos
+ * saving photo to mongoDB
  */
 exports.createPhoto = async (req, res) => {
   try {
@@ -194,6 +204,7 @@ exports.createPhoto = async (req, res) => {
 
 /**
  * POST /api/gardenRoutes/plants
+ * saving plants in the DB after recognition
  */
 exports.bulkUpsertPlants = async (req, res) => {
   try {
@@ -280,7 +291,10 @@ exports.bulkUpsertPlants = async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 };
+
+
 // DELETE /api/gardenRoutes/plants/:id
+// support deleting unrelevent plants
 exports.deletePlant = async (req, res) => {
   try {
     const userId = toOid(req.userId);
@@ -295,6 +309,8 @@ exports.deletePlant = async (req, res) => {
     res.status(500).json({ error: 'internal_error' });
   }
 };
+
+// retrieving all of the relevent photos for each area
 exports.listAreaPhotos = async (req, res) => {
   try {
     const userId = toOid(req.userId);
@@ -320,6 +336,7 @@ exports.listAreaPhotos = async (req, res) => {
   }
 };
 
+// retrieving all of the plants of that area
 exports.listAreaPlants = async (req, res) => {
   try {
     const userId = toOid(req.userId);
@@ -353,6 +370,7 @@ exports.listAreaPlants = async (req, res) => {
 };
 // PATCH /api/plants/:id
 // Body can include { lastWateredAt?: string|null, lastFertilizedAt?: string|null, notes?: string }
+// changing plants by their ID
 exports.updatePlantDates = async (req, res) => {
   try {
     const userId = toOid(req.userId);
@@ -396,6 +414,7 @@ exports.updatePlantDates = async (req, res) => {
 };
 /**
  * DELETE /api/photos/:id
+ * delete photo by photo id
  */
 exports.deletePhoto = async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+// this is the DB that saves all of the pictures of each area, divided into 3 slots at most
 const PhotoSchema = new mongoose.Schema({
   userId:   { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   areaId:   { type: mongoose.Schema.Types.ObjectId, ref: "Area", required: true },
