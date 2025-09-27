@@ -22,12 +22,12 @@ function toSingleInput(messages) {
     .join("\n\n");
 }
 
-
+// basic fallback in case the LLM fails
 function basicFallback(messages) {
   const last = messages.filter(m => m.role === "user").slice(-1)[0]?.content || "";
-  return { text: `Here is a basic answer based on your data: ${last}` };
+  return { text: `LLM failed to respond this data: ${last}` };
 }
-
+// calling the LLM for the tip message
 export async function callLLM(messages) {
   if (PROVIDER !== "openai" || !client.apiKey) return basicFallback(messages);
 
@@ -46,6 +46,8 @@ export async function callLLM(messages) {
     return basicFallback(messages);
   }
 }
+
+// calling the LLM for chat message
 export async function callLLMForChat({ messages, tools }) {
    try {
     const resp = await client.chat.completions.create({
