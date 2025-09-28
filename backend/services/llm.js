@@ -2,7 +2,8 @@ import OpenAI from "openai";
 import { OPENAI_KEY } from "./apitok";
 
 const PROVIDER = "openai";
-const MODEL = "gpt-4o-mini";
+const CHATBOT_MODEL = "gpt-4o-mini";
+const DAILY_TIP_MODEL = "gpt-4o";
 const client = new OpenAI({ apiKey: OPENAI_KEY });
 
 function toSingleInput(messages) {
@@ -34,7 +35,7 @@ export async function callLLM(messages) {
   try {
     const input = toSingleInput(messages);
     const resp = await client.responses.create({
-      model: MODEL,
+      model: DAILY_TIP_MODEL,
       input,
     });
     const text = resp.output_text || "";
@@ -51,7 +52,7 @@ export async function callLLM(messages) {
 export async function callLLMForChat({ messages, tools }) {
    try {
     const resp = await client.chat.completions.create({
-      model: MODEL,
+      model: CHATBOT_MODEL,
       messages,
       tools,
       tool_choice: "auto" // let the model decide
