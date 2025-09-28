@@ -97,7 +97,7 @@ exports.chat = async (req, res) => {
   try {
     const userId = toOid(req.userId);
     if (!userId) return res.status(401).json({ error: "unauthorized" });
-    const { message } = req.body || {};
+    const { message, lat, lon } = req.body || {};
     if (!message) return res.status(400).json({ error: "message is required" });
 
     // Retrieve short context
@@ -158,6 +158,12 @@ Style rules:
       ...history,
       { role: "user", content: message }
     ];
+    if (lat && lon) {
+    messages.push({
+      role: "system",
+      content: `USER_LOCATION={"lat": ${lat}, "lon": ${lon}}`
+    });
+  }   
     await ChatMessage.create({ userId, role: "user", text: message });
     // LLM response
     let loops = 0;

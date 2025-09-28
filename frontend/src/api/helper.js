@@ -37,15 +37,24 @@ export async function loadLatestTip() {
   return res.json(); // expect { tip, createdAt } or null
 }
 
-export async function postChat(message) {
+// Send a chat message with optional geolocation and area context
+export async function postChat(message, { area_id, lat, lon } = {}) {
+  const payload = { message };
+  if (area_id != null) payload.area_id = area_id;
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    payload.lat = lat;
+    payload.lon = lon;
+  }
+
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ message}),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("helper chat failed");
   return res.json();
 }
+
 export async function logEvent(ev) {
   const res = await fetch(`${API_BASE}/events`, {
     method: "POST",

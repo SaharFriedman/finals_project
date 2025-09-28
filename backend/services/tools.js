@@ -3,8 +3,7 @@ const Plant = require("../models/plant");
 const Photo = require("../models/photos");
 
 // Base URL for the weather service
-const WEATHER_BASE = "http://127.0.0.1:2021/weather";
-
+const WEATHER_BASE = process.env.WEATHER_BASE || "http://pyserver:2021/weather";
 // Helper function to extract relevant weather summary fields
 function pickWeatherSummary(j) {
   return {

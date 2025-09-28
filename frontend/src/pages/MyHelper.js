@@ -46,23 +46,31 @@ export default function MyHelper() {
 
 
   async function send() {
-    if (!input.trim()) return;
-    const text = input.trim();
-    setInput("");
-    // each user input is declared as a user message
-    setMessages(m => [...m, { role: "user", text }]);
-    // sending the API
-    setBusy(true);
-    try {
-      // each API's output is declaired as an assistent message
-      const { reply } = await postChat(text, null);
-      setMessages(m => [...m, { role: "assistant", text: reply }]);
-    } catch (e) {
-      setMessages(m => [...m, { role: "assistant", text: "Error. Please try again." }]);
-    } finally {
-      setBusy(false);
-    }
+  if (!input.trim()) return;
+  const text = input.trim();
+  setInput("");
+  setMessages(m => [...m, { role: "user", text }]);
+  setBusy(true);
+  try {
+    // Get coordinates from the browser
+    const coords = await new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+        () => resolve(null) // do not block if user denies
+      );
+    });
+
+    const geo = coords ? { lat: coords.lat, lon: coords.lon } : {};
+    const { reply } = await postChat(text, geo);
+    setMessages(m => [...m, { role: "assistant", text: reply }]);
+  } catch (e) {
+    setMessages(m => [...m, { role: "assistant", text: "Error. Please try again." }]);
+  } finally {
+    setBusy(false);
   }
+}
+
 
   return (
     /* parsing context to screen */
