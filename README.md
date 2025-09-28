@@ -1,4 +1,4 @@
-🌱 Finals Project – Smart Garden Assistant
+### 🌱 Finals Project – Smart Garden Assistant
 
 Welcome to **MyGarden** – a fun, interactive project that combines computer vision, Node.js, and a React frontend to help manage your garden.  
 It’s our final project, built with love, some sleepless nights, and lots of plants 🌿.
