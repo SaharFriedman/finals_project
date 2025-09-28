@@ -85,11 +85,11 @@ it means that port is already in use.
    netstat -ano | findstr ":12345"  
 2.Note the last column (PID), then check which program it belongs to.  
 3. change the second PID to the relevant one when writing: tasklist /FI "PID eq PID".  
-4.re run the program with docker compose up -d --build or docker compose up -d --build.  
+4.re run the program with docker compose up -d --build or docker compose up -d --build frontend/backend/pyserver depends on the blocked port.  
    
 ## ⚠️ Notes
 - The first run may take a while since Docker installs all dependencies and downloads the YOLO model.
-- If you change `Dockerfile` or dependencies, rebuild with:  docker compose up -d --build frontend/backend/pyserver depends on the blocked port
+- If you change `Dockerfile` or dependencies,rebuild with
   ```bash
   docker compose build
   ```
