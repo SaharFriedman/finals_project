@@ -83,9 +83,9 @@ it means that port is already in use.
 1. **Find what is using the port**
    ```powershell
    netstat -ano | findstr ":12345"  
-2.Note the last column (PID), then check which program it belongs to.   
-3. change the <PID> to the relevant one when writing: tasklist /FI "PID eq <PID>". 
-4.re run the program with docker compose up -d --build or docker compose up -d --build. 
+2.Note the last column (PID), then check which program it belongs to.  
+3. change the <PID> to the relevant one when writing: tasklist /FI "PID eq <PID>".  
+4.re run the program with docker compose up -d --build or docker compose up -d --build.  
    
 ## ⚠️ Notes
 - The first run may take a while since Docker installs all dependencies and downloads the YOLO model.
