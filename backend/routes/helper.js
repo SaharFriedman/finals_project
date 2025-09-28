@@ -6,7 +6,5 @@ const ctrl = require("../controllers/helperController");
 router.get("/context", ctrl.getContext);
 router.post("/chat", ctrl.chat);
 router.post("/chat/tip",ctrl.tip);
-router.post("/events", ctrl.createEvent);
-router.get("/events", ctrl.listEvents);
 router.get("/chat/tip/recent",ctrl.loadRecentTip);
 module.exports = router;
