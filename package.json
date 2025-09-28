@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "dompurify": "^3.2.7",
+    "image-size": "^2.0.2",
+    "multer": "^2.0.2",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  }
+}
