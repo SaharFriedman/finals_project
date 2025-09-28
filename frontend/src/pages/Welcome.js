@@ -718,7 +718,6 @@ function normalizeLatestTipToObject(tip) {
         knowledge,
         ...(prevWeekFeatures ? { prev_week_features: prevWeekFeatures } : {})
       });
-      console.log(userPayload);
       // debug
       setDebugPrompt({ system: systemMessage, developer: developerMessage, user: userPayload });
 
