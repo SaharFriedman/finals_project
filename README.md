@@ -64,7 +64,7 @@ docker compose down
 ```
 
 ---  
-if you cannot sign up or log in please view this section.  
+### ⚠️if you cannot sign up or log in please view this section.  
 ### Handling Blocked Ports
 
 By default, the services in this project try to bind to the following ports on your machine:
