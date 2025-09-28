@@ -93,7 +93,7 @@ it means that port is already in use.
   ```bash
   docker compose build
   ```
-- If a port (3000, 12345, or 2021) is already in use on your system, adjust it in `docker-compose.yml`.
+- If a port (3000, 12345, or 2021) is already in use on your system and cannot be change, adjust it in `docker-compose.yml` and on files that contact the servers.
 
 ---
 ## Project Structure
