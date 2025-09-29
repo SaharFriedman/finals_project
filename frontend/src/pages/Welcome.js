@@ -64,8 +64,9 @@ Selection priorities for both daily_tip and topics (highest to lowest)
 1) Weather impact and scheduling - rain vs irrigation, heat, frost, wind. this is priority 1 only when weather have changed from previous history/getting critical.
 2) Plant-stage windows by local month - sowing, flowering, fruit set, harvest
 3) Due or overdue care by intervals - watering, fertilizing, pruning, staking, pest checks
-4) Local seasonality and light maintenance - mulch, irrigation checks, tool care
-5) Generic evergreen items only to reach the count
+4) Relevant topic from the "note" section on one of the plant's data - don't address the same plant note twice (from history)
+5) Local seasonality and light maintenance - mulch, irrigation checks, tool care
+6) Generic evergreen items only to reach the count
 
 Novelty
 - daily_tip - do not repeat any subject that was presented on last tips or this present tip. if needed be creative with different tip or topic that is not present on the allowed topic headers. don't talk about weather at all - unless it is directly effecting a plant and not obvious information.
