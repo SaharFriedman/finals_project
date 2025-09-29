@@ -3,5 +3,6 @@ project name: MyGarden
 project by: Sahar Friedman - 207489204, Adar Kliger - 315112474
 project course group-code: Sahar- 89385-06, Adar- 89385-16
 links: github - https://github.com/saharooly/finals_project.git
-jira - https://adarkliger.atlassian.net/jira/software/projects/SG/boards/2/timeline?atlOrigin=eyJpIjoiMjcyYTI5M2QyYjBkNDg1NDkxYzdlNmZkODAwNzgxMTQiLCJwIjoiaiJ9
+jira - https://adarkliger.atlassian.net/jira/software/projects/SGP/summary
 project video - 
+
