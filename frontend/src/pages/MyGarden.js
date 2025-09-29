@@ -767,7 +767,7 @@ export default function PictureDetect() {
           </div>
         )}
         {/* detection status - outside TopBar */}
-        {(detecting || detectMessage) && (
+        {savedPhotos.length > 0 && (detecting || detectMessage) && (
           <div style={{ display: "flex", justifyContent: "center", marginTop: -12, marginBottom: 18 }}>
             <div style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: "bold", color: detectMessage ? "#ff0000ff" : "#00f867ff" }}>
               {detecting ? "Detecting... please wait" : detectMessage}
