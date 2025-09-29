@@ -62,7 +62,7 @@ export default function SlideShow({ slidesComponents = [], title = "" }) {
       onClick={e => e.stopPropagation()} // stop bubbling
     >
       <h3>{selected.text}</h3>
-      <p>{selected.body}</p>
+      <p style={{color:"black", fontWeight:"600"}}>{selected.body}</p>
       <button className="modal-close" onClick={() => setSelected(null)}>
         Close
       </button>
