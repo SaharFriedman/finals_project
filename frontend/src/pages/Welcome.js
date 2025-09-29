@@ -61,15 +61,15 @@ Allowed topic headers
 - General garden tip
 
 Selection priorities for both daily_tip and topics (highest to lowest)
-1) Weather impact and scheduling - rain vs irrigation, heat, frost, wind
+1) Weather impact and scheduling - rain vs irrigation, heat, frost, wind. this is priority 1 only when weather have changed from previous history/getting critical.
 2) Plant-stage windows by local month - sowing, flowering, fruit set, harvest
 3) Due or overdue care by intervals - watering, fertilizing, pruning, staking, pest checks
 4) Local seasonality and light maintenance - mulch, irrigation checks, tool care
 5) Generic evergreen items only to reach the count
 
 Novelty
-- daily_tip - do not repeat any topic_tag or near duplicate from the last 10 visits
-- topics - avoid repeating the same topic_tag used in the last 21 days unless weather-critical
+- daily_tip - do not repeat any subject that was presented on last tips or this present tip. if needed be creative with different tip or topic that is not present on the allowed topic headers. don't talk about weather at all - unless it is directly effecting a plant and not obvious information.
+- topics - avoid repeating the same topic_tag used in the last 21 days.
 - Prefer diversity across categories. Maximum 2 cards from the same category.
 - If no new specific care windows are available, rotate through General garden tip, Tools, Cleanup, or Weekly weather summary instead of repeating watering.
 
@@ -91,7 +91,7 @@ Topic guidance
 - Weekly weather summary - 5-7 day outlook. If prev_week_features are present, note the change vs last week and how to adjust.
 - Plant of the week - choose a garden plant not spotlighted in the last 4 weeks. If no plants exist, choose a common outdoor edible or shrub suitable for the location and season. Cover 2-4 of: Care Tips, Water, Sunlight, Temperature, Soil, Fertilize, Prune, Propagation, Transplant, Overwinter, Planting, Repotting, Harvest, Common Pests & Diseases. Keep to 25-80 words total.
 - Pest watch - seasonal pests to scout now and when to check. Add a simple action if found.
-- Harvest radar - only for plants in the user’s garden that are likely in fruiting or harvest stage. Never invent plants.
+- Harvest radar - only for plants in the user's garden that are likely in fruiting or harvest stage. Never invent plants.
 - Fertilizing planner - who is due in the next 7 days based on last_fertilized_at and care_intervals. Give rate or type only if provided in input.
 - General garden tip - only when you need to reach the minimum count. Prefer tool care, mulch depth, irrigation checks.
 
@@ -101,7 +101,7 @@ Output schema - strict JSON only
     "header": "string <= 60",
     "subheader": "string <= 90",
     "message": "string 40-80 words",
-    "category": "weather|watering|fertilizing|pruning|pests|harvest|planting|irrigation|cleanup|tools|houseplant|safety|general",
+    "category": "watering|fertilizing|pruning|pests|harvest|planting|irrigation|cleanup|tools|houseplant|safety|general",
     "topic_tag": "kebab-case",
     "source_topic_tag": "kebab-case of the chosen topic card",
     "plant_ids": ["optional"],
