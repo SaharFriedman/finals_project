@@ -10,8 +10,8 @@ It’s our final project, built with love, some sleepless nights, and lots of pl
 - Stores garden info in MongoDB.
  by **Sahar Friedman** and **Adar Kliger**.
 
----
-
+---  
+### for more info - see our project video - MyGarden.mp4  
 ## Run Instructions
 
 ### 1. Clone the repository
