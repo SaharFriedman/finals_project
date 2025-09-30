@@ -24,7 +24,7 @@ CONTAINER_CLASSES_N = {"pot", "raised_bed", "garden_bed", "grass"}
 PLANT_MIN_CONF = 0.60           # weight for object detection
 MIN_IOU        = 0.05            # weight for container inferr
 PRED_CONF_KEEP_ALL = 0.001       
-SCND_MIN_CONF = 0.90              # weight for plant detection
+SCND_MIN_CONF = 0.80              # weight for plant detection
 
 ### ------------------------- helper functions -------------------------------------- ###
 
@@ -60,7 +60,6 @@ def iou(a,b):
 
 # ---- label helpers ----
 def norm_label(lbl: str) -> str:
-    """lowercase + unify separators + simple synonyms"""
     s = (lbl or "").strip().lower().replace(" ", "_").replace("-", "_")
     synonyms = {
         "potted_plant": "plant",
@@ -72,12 +71,30 @@ def norm_label(lbl: str) -> str:
     }
     return synonyms.get(s, s)
 RAW_SCND_CLASSES = [
-    "Basil", "Geranium", "Jasmine",  
-    "Lavender", "Lemon", "Olive", "Orange", "Parsley", "Peppermint"
+    "Basil",
+    "Bougainvillea",
+    "Daisy",
+    "Geranium",
+    "Hibiscuse",
+    "Impatiens",
+    "Jasmin",
+    "Lavender",
+    "Lemon",
+    "Marigold",
+    "Olive",
+    "Orange",
+    "Oregano",
+    "Parsley",
+    "Peppermint",
+    "Petunias",
+    "Rose",
+    "Rosemary",
+    "Sunflower",
+    "Thyme",
+    "pomegranate",
 ]
 SCND_CLASSES_N = { norm_label(x) for x in RAW_SCND_CLASSES }
 def canonical_container(lbl_n: str) -> str:
-    """emit the 4 UI values you want to use everywhere"""
     if lbl_n in {"garden_bed", "grass"}:
         return "ground"
     if lbl_n in {"pot", "raised_bed"}:
