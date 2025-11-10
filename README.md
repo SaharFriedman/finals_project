@@ -1,4 +1,4 @@
-### 🌱 Finals Project – Smart Garden Assistant project no. 088
+### 🌱 Finals Project – Smart Garden Assistant
 
 Welcome to **MyGarden** – a fun, interactive project that combines computer vision, Node.js, and a React frontend to help manage your garden.  
 It’s our final project, built with love, some sleepless nights, and lots of plants 🌿.
@@ -134,6 +134,3 @@ docker-compose.yml          # Compose stack: frontend, backend, python server
 .env                        # Environment variables
 README.md                   # You’re reading it 😉
 ```
-## 👩‍💻 Authors
-- Sahar Friedman
-- Adar Kliger  
